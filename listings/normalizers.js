@@ -18,6 +18,10 @@ export function normalizeListing(record, context = {}) {
     "Residence";
   const propertyType = formatListValue(record.PropertySubType) || formatListValue(record.PropertyType) || "Residential";
   const baths = Number(record.BathroomsTotalDecimal || record.BathroomsTotalInteger || record.baths || 0);
+  const remarks =
+    record.PublicRemarks ||
+    record.description ||
+    "A curated South Florida residence with market context available through private advisory.";
 
   return {
     id: slug || listingKey,
@@ -43,7 +47,7 @@ export function normalizeListing(record, context = {}) {
     hoa: record.AssociationFee ? formatAssociationFee(record.AssociationFee, record.AssociationFeeFrequency) : "Available by request",
     architecturalStyle: architecture,
     propertyType,
-    media,
+    media: media.slice(0, 12),
     heroImage: media[0] || "/videos/optimized/miami-hero-02-poster.jpg",
     gallery: media.length ? media.slice(0, 8) : [
       "/videos/optimized/miami-hero-02-poster.jpg",
@@ -53,9 +57,10 @@ export function normalizeListing(record, context = {}) {
     ],
     map: lat && lng ? { lat, lng, ...toMapPin(lat, lng) } : { lat: null, lng: null, x: 50, y: 48 },
     pin: lat && lng ? toMapPin(lat, lng) : { x: 50, y: 48 },
-    description: record.PublicRemarks || record.description || "A curated South Florida residence with market context available through private advisory.",
+    description: remarks,
+    summary: summarizeRemarks(remarks),
     narrative:
-      record.PublicRemarks ||
+      remarks ||
       record.PrivateRemarks ||
       "This residence is presented through Yairo Properties with attention to location, condition, architecture, and long-term market fit.",
     marketPosition: [propertyType, city || "South Florida"].filter(Boolean).join(" / "),
@@ -128,6 +133,12 @@ function buildStreetAddress(record, fallback) {
     .slice(0, 1)
     .join("")
     .trim();
+}
+
+function summarizeRemarks(value) {
+  const text = String(value || "").replace(/\s+/g, " ").trim();
+  if (text.length <= 210) return text;
+  return `${text.slice(0, 190).replace(/[,\s]+$/, "")}...`;
 }
 
 function formatStatus(status) {

@@ -317,6 +317,7 @@ function normalizeCardListing(listing, index = 0) {
     baths: listing.baths || 0,
     sqft: listing.displaySqft || listing.sqft || "Available by request",
     description:
+      listing.summary ||
       listing.description ||
       "A curated South Florida residence with private context available through Yairo Properties.",
     pin: listing.pin || listing.map || { x: 50, y: 48 },
