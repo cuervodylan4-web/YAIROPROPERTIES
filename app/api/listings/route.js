@@ -5,7 +5,7 @@ export const revalidate = 900;
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
-  const limit = Number(searchParams.get("limit") || 60);
+  const limit = Number(searchParams.get("limit") || 48);
   const minPrice = Number(searchParams.get("minPrice") || 600000);
   const maxPrice = Number(searchParams.get("maxPrice") || 0);
   const options = {

@@ -19,7 +19,7 @@ const TARGET_CITIES = [
 ];
 
 export async function fetchSparkResoListings({
-  limit = 60,
+  limit = 48,
   minPrice = 600000,
   maxPrice,
   city,
@@ -37,7 +37,7 @@ export async function fetchSparkResoListings({
   if (!token) return [];
 
   const params = new URLSearchParams();
-  params.set("$top", String(Math.min(Number(limit) || 60, 100)));
+  params.set("$top", String(Math.min(Number(limit) || 48, 60)));
   params.set("$orderby", "ModificationTimestamp desc");
   params.set(
     "$filter",
@@ -115,7 +115,7 @@ export async function fetchSparkResoListingBySlug(slug) {
     }
   }
 
-  const listings = await fetchSparkResoListings({ limit: 100 });
+  const listings = await fetchSparkResoListings({ limit: 60 });
   return listings.find((listing) => listing.slug === slug || listing.listingKey === slug || listing.mlsId === slug) || null;
 }
 

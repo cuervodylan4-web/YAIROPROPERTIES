@@ -113,15 +113,11 @@ const searchModes = {
     description: "Waterfront estates, architectural homes, and established neighborhoods.",
     action: "Search Residences",
     fields: [
-      { label: "State", options: ["Florida", "New York", "California"] },
-      { label: "City", options: ["Miami", "Miami Beach", "Coral Gables", "Surfside"] },
-      { label: "Neighborhood", options: ["North Bay Road", "Fisher Island", "Brickell", "Coconut Grove"] },
-      { label: "Property Type", options: ["Estate", "Penthouse", "Condo", "Townhouse"] },
-      { label: "Bedrooms", options: ["2+", "3+", "4+", "5+"] },
-      { label: "Bathrooms", options: ["2+", "3+", "4+", "6+"] },
-      { label: "Square Footage", options: ["2,000+", "4,000+", "6,000+", "10,000+"] },
-      { label: "HOA", options: ["Any", "Under $2K", "Under $5K", "No HOA"] },
-      { label: "Year Built", options: ["Any", "2020+", "2015+", "2000+"] },
+      { label: "City / Area", options: ["All South Florida", "Miami", "Miami Beach", "Fort Lauderdale", "Boca Raton", "Coral Gables", "Coconut Grove", "Bal Harbour", "Sunny Isles Beach", "Aventura", "Parkland", "Plantation", "Weston"] },
+      { label: "Property Type", options: ["Any", "Single Family Residence", "Condominium", "Townhouse", "Villa"] },
+      { label: "Bedrooms", options: ["Any", "2+", "3+", "4+", "5+"] },
+      { label: "Bathrooms", options: ["Any", "2+", "3+", "4+", "5+"] },
+      { label: "Square Footage", options: ["Any", "1,500+", "2,500+", "4,000+", "6,000+"] },
     ],
     toggles: ["Waterfront", "New Construction"],
   },
@@ -131,12 +127,13 @@ const searchModes = {
     description: "Furnished residences, waterfront leases, and seasonal homes.",
     action: "Search Leases",
     fields: [
-      { label: "Lease Duration", options: ["1-3 Months", "3-6 Months", "6-12 Months", "12+ Months"] },
-      { label: "Amenities", options: ["Pool", "Private Dock", "Gym", "Concierge"] },
-      { label: "Bedrooms", options: ["1+", "2+", "3+", "4+"] },
-      { label: "Bathrooms", options: ["1+", "2+", "3+", "4+"] },
+      { label: "City / Area", options: ["All South Florida", "Miami", "Miami Beach", "Fort Lauderdale", "Boca Raton", "Coral Gables", "Coconut Grove", "Bal Harbour", "Sunny Isles Beach", "Aventura", "Parkland", "Plantation", "Weston"] },
+      { label: "Property Type", options: ["Any", "Single Family Residence", "Condominium", "Townhouse", "Villa"] },
+      { label: "Bedrooms", options: ["Any", "1+", "2+", "3+", "4+"] },
+      { label: "Bathrooms", options: ["Any", "1+", "2+", "3+", "4+"] },
+      { label: "Square Footage", options: ["Any", "1,000+", "1,500+", "2,500+", "4,000+"] },
     ],
-    toggles: ["Furnished", "Pet Friendly", "Waterfront"],
+    toggles: ["Waterfront"],
   },
   sell: {
     eyebrow: "Free Home Valuation",
@@ -358,29 +355,78 @@ function parseFilterNumber(value) {
   return String(value).replace(/[^\d.]/g, "");
 }
 
-function buildListingsQuery(filterValues, listingMode, limit = 60) {
-  const priceRange = filterValues["Price Range"] || [600000, 25000000];
+function listingParamsFromValues(values, modeKey = "buy", limit = 48) {
   const params = new URLSearchParams({
+    mode: modeKey,
     limit: String(limit),
-    mode: listingMode,
-    minPrice: String(Math.round(priceRange[0])),
-    maxPrice: String(Math.round(priceRange[1])),
   });
+  const range = modeKey === "rent" ? values["Monthly Budget"] : values["Price Range"];
 
-  listingFilters.forEach((field) => {
-    const value = filterValues[field.label];
+  if (Array.isArray(range)) {
+    params.set("minPrice", String(Math.round(range[0])));
+    params.set("maxPrice", String(Math.round(range[1])));
+  } else {
+    params.set("minPrice", modeKey === "rent" ? "2500" : "600000");
+  }
+
+  const fieldMap = {
+    "City / Area": "city",
+    "Property Type": "propertyType",
+    Bedrooms: "beds",
+    Beds: "beds",
+    Bathrooms: "baths",
+    Baths: "baths",
+    "Square Footage": "sqft",
+  };
+
+  Object.entries(fieldMap).forEach(([label, param]) => {
+    const value = values[label];
     if (!value || value === "Any" || value === "All South Florida") return;
-    if (["beds", "baths", "sqft"].includes(field.param)) {
-      params.set(field.param, parseFilterNumber(value));
+    if (["beds", "baths", "sqft"].includes(param)) {
+      params.set(param, parseFilterNumber(value));
       return;
     }
-    params.set(field.param, value);
+    params.set(param, value);
   });
 
-  if (filterValues.Waterfront) params.set("waterfront", "true");
-  if (filterValues["New Construction"]) params.set("newConstruction", "true");
+  if (values.Waterfront) params.set("waterfront", "true");
+  if (values["New Construction"]) params.set("newConstruction", "true");
 
-  return params.toString();
+  return params;
+}
+
+function buildListingsQuery(filterValues, listingMode, limit = 60) {
+  return listingParamsFromValues(filterValues, listingMode, limit).toString();
+}
+
+function getInitialListingState() {
+  if (typeof window === "undefined") {
+    return { mode: "buy", values: { "Price Range": [600000, 25000000] } };
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  const mode = params.get("mode") === "rent" ? "rent" : "buy";
+  const minPrice = Number(params.get("minPrice") || (mode === "rent" ? 2500 : 600000));
+  const maxPrice = Number(params.get("maxPrice") || (mode === "rent" ? 45000 : 25000000));
+  const values = {
+    "Price Range": [minPrice, maxPrice],
+  };
+
+  const city = params.get("city");
+  const propertyType = params.get("propertyType");
+  const beds = params.get("beds");
+  const baths = params.get("baths");
+  const sqft = params.get("sqft");
+
+  if (city) values["City / Area"] = city;
+  if (propertyType) values["Property Type"] = propertyType;
+  if (beds) values.Beds = `${beds}+`;
+  if (baths) values.Baths = `${baths}+`;
+  if (sqft) values["Square Footage"] = `${Number(sqft).toLocaleString("en-US")}+`;
+  if (params.get("waterfront") === "true") values.Waterfront = true;
+  if (params.get("newConstruction") === "true") values["New Construction"] = true;
+
+  return { mode, values };
 }
 
 function googleMapsEmbedUrl(listing) {
@@ -694,9 +740,11 @@ export function YairoHero() {
   const [activeVideo, setActiveVideo] = useState(0);
   const [readyMap, setReadyMap] = useState({});
   const [isLoaded, setIsLoaded] = useState(false);
+  const [mobileHero, setMobileHero] = useState(false);
   const [searchMode, setSearchMode] = useState("buy");
   const { scrollYProgress } = useScroll();
 
+  const heroVideos = useMemo(() => (mobileHero || reduceMotion ? [videos[0]] : videos), [mobileHero, reduceMotion]);
   const readyTarget = useMemo(() => 1, []);
   const readyCount = Object.keys(readyMap).length;
   const contentY = useTransform(scrollYProgress, [0, 0.62], [0, -86]);
@@ -707,12 +755,20 @@ export function YairoHero() {
   const navOpacity = useTransform(scrollYProgress, [0, 0.3], [1, 0]);
 
   useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 760px)");
+    const update = () => setMobileHero(mediaQuery.matches);
+    update();
+    mediaQuery.addEventListener?.("change", update);
+    return () => mediaQuery.removeEventListener?.("change", update);
+  }, []);
+
+  useEffect(() => {
     if (isLoaded) return undefined;
 
     const fallback = window.setTimeout(() => {
       setReadyMap((current) => {
         const next = { ...current };
-        videos.forEach((video) => {
+        heroVideos.forEach((video) => {
           next[video.src] = true;
         });
         return next;
@@ -720,7 +776,7 @@ export function YairoHero() {
     }, 900);
 
     return () => window.clearTimeout(fallback);
-  }, [isLoaded]);
+  }, [heroVideos, isLoaded]);
 
   useEffect(() => {
     if (readyCount < readyTarget || isLoaded) return;
@@ -745,7 +801,8 @@ export function YairoHero() {
 
     const interval = window.setInterval(() => {
       const currentIndex = activeVideoRef.current;
-      const nextIndex = (currentIndex + 1) % videos.length;
+      if (heroVideos.length < 2) return;
+      const nextIndex = (currentIndex + 1) % heroVideos.length;
       const currentVideo = videoRefs.current[currentIndex];
       const nextVideo = videoRefs.current[nextIndex];
 
@@ -766,7 +823,7 @@ export function YairoHero() {
     }, VIDEO_DURATION_MS);
 
     return () => window.clearInterval(interval);
-  }, [isLoaded, reduceMotion]);
+  }, [heroVideos.length, isLoaded, reduceMotion]);
 
   useEffect(() => {
     activeVideoRef.current = activeVideo;
@@ -834,7 +891,7 @@ export function YairoHero() {
 
       <section id="home" className="hero" aria-label="Yairo Rincon luxury real estate hero">
         <motion.div className="video-stack" style={{ y: reduceMotion ? 0 : mediaY }} aria-hidden="true">
-          {videos.map((video, index) => (
+          {heroVideos.map((video, index) => (
             <video
               key={video.src}
               ref={(node) => {
@@ -1393,12 +1450,12 @@ function SearchExperience({ activeMode, onModeChange }) {
     window.setTimeout(() => setLoading(false), 1150);
     setActiveSection(modeKey);
     if (modeKey === "sell") {
-      window.open(
-        messageUrl("Hi Yairo, I would like to request a free home valuation."),
-        "_blank",
-        "noopener,noreferrer",
-      );
+      window.location.href = messageUrl("Hi Yairo, I would like to request a free home valuation.");
+      return;
     }
+
+    const query = listingParamsFromValues(values, modeKey, 48).toString();
+    window.location.href = `/listings?${query}#listing-results`;
   };
 
   return (
@@ -1775,16 +1832,20 @@ function FeaturedPropertiesSection() {
 
   useEffect(() => {
     let mounted = true;
+    const load = () => {
+      loadPlatformListings({ limit: 6 })
+        .then((incoming) => {
+          if (!mounted || !incoming.length) return;
+          setProperties(incoming.slice(0, 6).map(normalizeFeaturedListing));
+        })
+        .catch(() => {});
+    };
 
-    loadPlatformListings({ limit: 9 })
-      .then((incoming) => {
-        if (!mounted || !incoming.length) return;
-        setProperties(incoming.slice(0, 9).map(normalizeFeaturedListing));
-      })
-      .catch(() => {});
+    const timer = window.setTimeout(load, 1200);
 
     return () => {
       mounted = false;
+      window.clearTimeout(timer);
     };
   }, []);
 
@@ -2224,11 +2285,10 @@ function CalculatorRange({ label, value, min, max, step, format, onChange }) {
 function ListingsPageSection({ standalone = false }) {
   const reduceMotion = useReducedMotion();
   const sectionRef = useRef(null);
-  const [listingMode, setListingMode] = useState("buy");
+  const initialListingState = useMemo(getInitialListingState, []);
+  const [listingMode, setListingMode] = useState(initialListingState.mode);
   const [openFilter, setOpenFilter] = useState(null);
-  const [filterValues, setFilterValues] = useState({
-    "Price Range": [600000, 25000000],
-  });
+  const [filterValues, setFilterValues] = useState(initialListingState.values);
   const [visibleListings, setVisibleListings] = useState(listings);
   const [activeListing, setActiveListing] = useState(listings[0]);
   const [isLoadingListings, setIsLoadingListings] = useState(false);
@@ -2240,24 +2300,7 @@ function ListingsPageSection({ standalone = false }) {
 
   useEffect(() => {
     let mounted = true;
-
-    loadPlatformListings({ limit: 60 })
-      .then((incoming) => {
-        if (!mounted || !incoming.length) return;
-        const nextListings = incoming.map(normalizeCardListing);
-        setVisibleListings(nextListings);
-        setActiveListing(nextListings[0]);
-      })
-      .catch(() => {});
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    let mounted = true;
-    const query = buildListingsQuery(filterValues, listingMode, 60);
+    const query = buildListingsQuery(filterValues, listingMode, 48);
 
     setIsLoadingListings(true);
     const timer = window.setTimeout(() => {
