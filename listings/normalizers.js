@@ -10,6 +10,8 @@ export function normalizeListing(record, context = {}) {
   const sqft = Number(record.LivingArea || record.BuildingAreaTotal || record.sqft || 0);
   const lat = Number(record.Latitude || record.latitude || 0);
   const lng = Number(record.Longitude || record.longitude || 0);
+  const architecture = formatListValue(record.ArchitecturalStyle || record.PropertySubType || record.PropertyType || "Residence");
+  const propertyType = formatListValue(record.PropertySubType || record.PropertyType || "Residential");
 
   return {
     id: slug || listingKey,
@@ -32,8 +34,8 @@ export function normalizeListing(record, context = {}) {
     waterfront: Boolean(record.WaterfrontYN || record.waterfront),
     yearBuilt: record.YearBuilt || null,
     hoa: record.AssociationFee ? formatAssociationFee(record.AssociationFee, record.AssociationFeeFrequency) : "Available by request",
-    architecturalStyle: record.ArchitecturalStyle || record.PropertySubType || record.PropertyType || "Residence",
-    propertyType: record.PropertySubType || record.PropertyType || "Residential",
+    architecturalStyle: architecture,
+    propertyType,
     media,
     heroImage: media[0] || "/videos/optimized/miami-hero-02-poster.jpg",
     gallery: media.length ? media.slice(0, 8) : [
@@ -49,7 +51,7 @@ export function normalizeListing(record, context = {}) {
       record.PublicRemarks ||
       record.PrivateRemarks ||
       "This residence is presented through Yairo Properties with attention to location, condition, architecture, and long-term market fit.",
-    marketPosition: [record.PropertySubType || record.PropertyType, city || "South Florida"].filter(Boolean).join(" / "),
+    marketPosition: [propertyType, city || "South Florida"].filter(Boolean).join(" / "),
     specs: [
       ["Bedrooms", String(Number(record.BedroomsTotal || record.beds || 0) || "Upon request")],
       ["Bathrooms", String(Number(record.BathroomsTotalInteger || record.BathroomsTotalDecimal || record.baths || 0) || "Upon request")],
@@ -58,7 +60,7 @@ export function normalizeListing(record, context = {}) {
       ["Year Built", record.YearBuilt ? String(record.YearBuilt) : "Upon request"],
       ["Parking", record.GarageSpaces ? `${record.GarageSpaces} Cars` : "Upon request"],
       ["HOA", record.AssociationFee ? formatAssociationFee(record.AssociationFee, record.AssociationFeeFrequency) : "Upon request"],
-      ["Architecture", record.ArchitecturalStyle || record.PropertySubType || "Residential"],
+      ["Architecture", architecture || "Residential"],
     ],
     places: [
       { label: "Miami waterfront", type: "Water", x: 38, y: 48 },
@@ -68,11 +70,10 @@ export function normalizeListing(record, context = {}) {
     ],
     intelligence: [
       ["Market Status", formatStatus(record.StandardStatus || record.MlsStatus || "Active"), "Live MLS positioning through Spark RESO data."],
-      ["Property Type", record.PropertySubType || record.PropertyType || "Residential", "Reviewed through location, condition, and long-term fit."],
+      ["Property Type", propertyType || "Residential", "Reviewed through location, condition, and long-term fit."],
       ["Waterfront", record.WaterfrontYN ? "Yes" : "Verify", "Water orientation and access should be confirmed during advisory."],
       ["MLS Reference", record.ListingId || listingKey || "Available", "Source record connected through SparkPlatform RESO Web API."],
     ],
-    raw: record,
   };
 }
 
@@ -93,12 +94,19 @@ function normalizeMedia(media) {
 
   return media
     .slice()
+    .filter((item) => typeof item === "string" || !item.MediaCategory || String(item.MediaCategory).toLowerCase() === "photo")
     .sort((a, b) => Number(a.Order || a.MediaOrder || 0) - Number(b.Order || b.MediaOrder || 0))
     .map((item) => {
       if (typeof item === "string") return item;
       return item.MediaURL || item.MediaURLFull || item.MediaURLPreview || item.url || item.Uri || "";
     })
+    .filter((url) => /\.(jpe?g|png|webp|avif)(\?|$)/i.test(url))
     .filter(Boolean);
+}
+
+function formatListValue(value) {
+  if (Array.isArray(value)) return value.filter(Boolean).join(", ");
+  return value || "";
 }
 
 function formatStatus(status) {
