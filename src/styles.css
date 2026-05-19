@@ -1574,12 +1574,44 @@ h1 em {
   left: -1px;
   z-index: 20;
   display: grid;
+  max-height: min(420px, 60svh);
+  overflow: auto;
   padding: 8px;
   background: rgba(8, 10, 9, 0.94);
   border: 1px solid rgba(49, 88, 80, 0.48);
   box-shadow: 0 34px 90px rgba(0, 0, 0, 0.52);
   backdrop-filter: blur(22px);
   transform-origin: top;
+}
+
+.field-search {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px 12px;
+}
+
+.field-search span,
+.field-hint {
+  margin: 0;
+  color: rgba(246, 244, 239, 0.46);
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.field-search input {
+  width: 100%;
+  border: 1px solid rgba(246, 244, 239, 0.14);
+  outline: 0;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(246, 244, 239, 0.9);
+  font: inherit;
+}
+
+.field-hint {
+  padding: 10px 14px;
 }
 
 .field-menu button {
@@ -3352,6 +3384,17 @@ h1 em {
 
 .listings-page .field-menu button {
   color: rgba(8, 9, 8, 0.62);
+}
+
+.listings-page .field-search span,
+.listings-page .field-hint {
+  color: rgba(8, 9, 8, 0.44);
+}
+
+.listings-page .field-search input {
+  border-color: rgba(8, 9, 8, 0.12);
+  background: rgba(8, 9, 8, 0.03);
+  color: #080908;
 }
 
 .listings-page .field-menu button:hover {

@@ -26,13 +26,96 @@ const PRICE_STOPS = [
   { pos: 100, value: 2000000000 },
 ];
 const RENT_STOPS = [
-  { pos: 0, value: 2000 },
-  { pos: 45, value: 15000 },
-  { pos: 75, value: 50000 },
-  { pos: 92, value: 120000 },
-  { pos: 100, value: 300000 },
+  { pos: 0, value: 1000 },
+  { pos: 100, value: 45000 },
 ];
 const FALLBACK_PROPERTY_IMAGE = "/videos/optimized/miami-hero-02-poster.jpg";
+const FLORIDA_CITY_OPTIONS = [
+  "All Florida",
+  "Aventura",
+  "Bal Harbour",
+  "Bay Harbor Islands",
+  "Boca Raton",
+  "Bonita Springs",
+  "Boynton Beach",
+  "Bradenton",
+  "Brickell",
+  "Cape Coral",
+  "Clearwater",
+  "Coconut Creek",
+  "Coconut Grove",
+  "Cooper City",
+  "Coral Gables",
+  "Coral Springs",
+  "Dania Beach",
+  "Davie",
+  "Deerfield Beach",
+  "Delray Beach",
+  "Destin",
+  "Doral",
+  "Edgewater",
+  "Estero",
+  "Fisher Island",
+  "Fort Lauderdale",
+  "Fort Myers",
+  "Gainesville",
+  "Hallandale Beach",
+  "Hollywood",
+  "Homestead",
+  "Jacksonville",
+  "Jupiter",
+  "Key Biscayne",
+  "Key West",
+  "Kissimmee",
+  "Lake Worth Beach",
+  "Las Olas",
+  "Lauderdale-by-the-Sea",
+  "Lighthouse Point",
+  "Longboat Key",
+  "Marco Island",
+  "Melbourne",
+  "Miami",
+  "Miami Beach",
+  "Miami Lakes",
+  "Miami Shores",
+  "Miramar",
+  "Naples",
+  "North Bay Village",
+  "North Miami",
+  "North Miami Beach",
+  "Oakland Park",
+  "Ocala",
+  "Orlando",
+  "Palm Beach",
+  "Palm Beach Gardens",
+  "Palmetto Bay",
+  "Parkland",
+  "Pembroke Pines",
+  "Pinecrest",
+  "Plantation",
+  "Pompano Beach",
+  "Port St. Lucie",
+  "Sarasota",
+  "South Miami",
+  "St. Augustine",
+  "St. Petersburg",
+  "Sunny Isles Beach",
+  "Surfside",
+  "Tallahassee",
+  "Tampa",
+  "Venice",
+  "Wellington",
+  "West Palm Beach",
+  "Weston",
+  "Wilton Manors",
+  "Winter Park",
+];
+const CITY_FIELD = {
+  label: "City / Area",
+  options: FLORIDA_CITY_OPTIONS,
+  searchable: true,
+  placeholder: "Type a Florida city",
+};
 
 const serviceAreas = [
   "Parkland",
@@ -109,11 +192,11 @@ const experiences = [
 const searchModes = {
   buy: {
     eyebrow: "Acquisition Search",
-    title: "Miami Purchase Search",
+    title: "Purchase Search",
     description: "Waterfront estates, architectural homes, and established neighborhoods.",
     action: "Search Residences",
     fields: [
-      { label: "City / Area", options: ["All South Florida", "Miami", "Miami Beach", "Fort Lauderdale", "Boca Raton", "Coral Gables", "Coconut Grove", "Bal Harbour", "Sunny Isles Beach", "Aventura", "Parkland", "Plantation", "Weston"] },
+      CITY_FIELD,
       { label: "Property Type", options: ["Any", "Single Family Residence", "Condominium", "Townhouse", "Villa"] },
       { label: "Bedrooms", options: ["Any", "2+", "3+", "4+", "5+"] },
       { label: "Bathrooms", options: ["Any", "2+", "3+", "4+", "5+"] },
@@ -123,11 +206,11 @@ const searchModes = {
   },
   rent: {
     eyebrow: "Seasonal Residence Search",
-    title: "Miami Lease Search",
+    title: "Property Lease Search",
     description: "Furnished residences, waterfront leases, and seasonal homes.",
     action: "Search Leases",
     fields: [
-      { label: "City / Area", options: ["All South Florida", "Miami", "Miami Beach", "Fort Lauderdale", "Boca Raton", "Coral Gables", "Coconut Grove", "Bal Harbour", "Sunny Isles Beach", "Aventura", "Parkland", "Plantation", "Weston"] },
+      CITY_FIELD,
       { label: "Property Type", options: ["Any", "Single Family Residence", "Condominium", "Townhouse", "Villa"] },
       { label: "Bedrooms", options: ["Any", "1+", "2+", "3+", "4+"] },
       { label: "Bathrooms", options: ["Any", "1+", "2+", "3+", "4+"] },
@@ -209,7 +292,7 @@ const featuredProperties = [
 ];
 
 const listingFilters = [
-  { label: "City / Area", param: "city", options: ["All South Florida", "Miami", "Miami Beach", "Fort Lauderdale", "Boca Raton", "Coral Gables", "Coconut Grove", "Bal Harbour", "Sunny Isles Beach", "Aventura", "Parkland", "Plantation", "Weston"] },
+  { ...CITY_FIELD, param: "city" },
   { label: "Property Type", param: "propertyType", options: ["Any", "Single Family Residence", "Condominium", "Townhouse", "Villa"] },
   { label: "Beds", param: "beds", options: ["Any", "2+", "3+", "4+", "5+"] },
   { label: "Baths", param: "baths", options: ["Any", "2+", "3+", "4+", "5+"] },
@@ -365,7 +448,7 @@ function listingParamsFromValues(values, modeKey = "buy", limit = 48) {
     params.set("minPrice", String(Math.round(range[0])));
     params.set("maxPrice", String(Math.round(range[1])));
   } else {
-    params.set("minPrice", modeKey === "rent" ? "2500" : "600000");
+    params.set("minPrice", modeKey === "rent" ? "1000" : "600000");
   }
 
   const fieldMap = {
@@ -380,7 +463,7 @@ function listingParamsFromValues(values, modeKey = "buy", limit = 48) {
 
   Object.entries(fieldMap).forEach(([label, param]) => {
     const value = values[label];
-    if (!value || value === "Any" || value === "All South Florida") return;
+    if (!value || value === "Any" || value === "All Florida" || value === "All South Florida") return;
     if (["beds", "baths", "sqft"].includes(param)) {
       params.set(param, parseFilterNumber(value));
       return;
@@ -405,7 +488,7 @@ function getInitialListingState() {
 
   const params = new URLSearchParams(window.location.search);
   const mode = params.get("mode") === "rent" ? "rent" : "buy";
-  const minPrice = Number(params.get("minPrice") || (mode === "rent" ? 2500 : 600000));
+  const minPrice = Number(params.get("minPrice") || (mode === "rent" ? 1000 : 600000));
   const maxPrice = Number(params.get("maxPrice") || (mode === "rent" ? 45000 : 25000000));
   const values = {
     "Price Range": [minPrice, maxPrice],
@@ -1469,7 +1552,7 @@ function SearchExperience({ activeMode, onModeChange }) {
       >
         <div className="search-heading">
           <span>Search</span>
-          <h2 id="search-title">Miami Real Estate With Clarity</h2>
+          <h2 id="search-title">South Florida Real Estate With Clarity</h2>
           <p>Filter by location, property type, price, and the details that shape the decision.</p>
         </div>
 
@@ -1565,7 +1648,7 @@ function SearchModeSection({
           <LuxuryRangeSlider
             label="Monthly Budget"
             stops={RENT_STOPS}
-            value={values["Monthly Budget"] || [8000, 45000]}
+            value={values["Monthly Budget"] || [1000, 45000]}
             onChange={(value) => onUpdateValue("Monthly Budget", value)}
           />
           <label className="date-field">
@@ -1660,6 +1743,12 @@ function SearchModeSection({
 
 function LuxuryField({ field, value, isOpen, onOpen, onChange }) {
   const hasOptions = Boolean(field.options);
+  const [query, setQuery] = useState("");
+  const isSearchable = Boolean(field.searchable);
+
+  useEffect(() => {
+    if (isOpen) setQuery("");
+  }, [isOpen]);
 
   if (!hasOptions) {
     return (
@@ -1669,6 +1758,24 @@ function LuxuryField({ field, value, isOpen, onOpen, onChange }) {
       </label>
     );
   }
+
+  const searchText = query.trim().toLowerCase();
+  const filteredOptions = isSearchable
+    ? field.options.filter((option) => {
+        if (option === "All Florida" || option === "All South Florida") return true;
+        if (searchText.length < 3) return false;
+        return option.toLowerCase().includes(searchText);
+      })
+    : field.options;
+  const canUseTypedCity =
+    isSearchable &&
+    searchText.length >= 3 &&
+    !field.options.some((option) => option.toLowerCase() === searchText);
+
+  const handleSelect = (option) => {
+    onChange(option);
+    setQuery("");
+  };
 
   return (
     <div className={isOpen ? "luxury-field is-open" : "luxury-field"}>
@@ -1685,11 +1792,36 @@ function LuxuryField({ field, value, isOpen, onOpen, onChange }) {
             exit={{ opacity: 0, y: -8, scaleY: 0.96 }}
             transition={{ duration: 0.34, ease: [0.16, 1, 0.3, 1] }}
           >
-            {field.options.map((option) => (
-              <button key={option} type="button" onClick={() => onChange(option)}>
+            {isSearchable && (
+              <label className="field-search">
+                <span>{field.placeholder || "Search"}</span>
+                <input
+                  autoFocus
+                  value={query}
+                  placeholder="Type 3 characters"
+                  onChange={(event) => setQuery(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" && query.trim().length >= 3) {
+                      event.preventDefault();
+                      handleSelect(query.trim());
+                    }
+                  }}
+                />
+              </label>
+            )}
+            {filteredOptions.map((option) => (
+              <button key={option} type="button" onClick={() => handleSelect(option)}>
                 {option}
               </button>
             ))}
+            {canUseTypedCity && (
+              <button type="button" onClick={() => handleSelect(query.trim())}>
+                Use "{query.trim()}"
+              </button>
+            )}
+            {isSearchable && searchText.length > 0 && searchText.length < 3 && (
+              <p className="field-hint">Type at least 3 characters.</p>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -1706,12 +1838,12 @@ function LuxuryRangeSlider({ label, stops, value, onChange }) {
 
   const updateMin = (event) => {
     const next = Math.min(positionToValue(Number(event.target.value), stops), maxValue * 0.985);
-    onChange([roundLuxuryValue(next), maxValue]);
+    onChange([roundRangeValue(next, stops), maxValue]);
   };
 
   const updateMax = (event) => {
     const next = Math.max(positionToValue(Number(event.target.value), stops), minValue * 1.015);
-    onChange([minValue, roundLuxuryValue(next)]);
+    onChange([minValue, roundRangeValue(next, stops)]);
   };
 
   return (
@@ -1783,6 +1915,12 @@ function roundLuxuryValue(value) {
   if (value < 10000000) return Math.round(value / 100000) * 100000;
   if (value < 100000000) return Math.round(value / 500000) * 500000;
   return Math.round(value / 5000000) * 5000000;
+}
+
+function roundRangeValue(value, stops) {
+  const maxStop = stops[stops.length - 1]?.value || 0;
+  if (maxStop <= 45000) return Math.round(value / 1000) * 1000;
+  return roundLuxuryValue(value);
 }
 
 function formatCurrencyCompact(value) {
@@ -2393,7 +2531,7 @@ function ListingsPageSection({ standalone = false }) {
               className={listingMode === mode ? "is-active" : ""}
               onClick={() => {
                 setListingMode(mode);
-                updateFilter("Price Range", mode === "buy" ? [600000, 25000000] : [2500, 45000]);
+                updateFilter("Price Range", mode === "buy" ? [600000, 25000000] : [1000, 45000]);
               }}
             >
               {mode}

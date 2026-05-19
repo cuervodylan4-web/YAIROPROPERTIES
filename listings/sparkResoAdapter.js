@@ -1,22 +1,6 @@
 import { normalizeListing } from "./normalizers.js";
 
 const DEFAULT_BASE_URL = "https://replication.sparkapi.com/Version/3/Reso/OData";
-const TARGET_CITIES = [
-  "Miami",
-  "Miami Beach",
-  "Bal Harbour",
-  "Sunny Isles Beach",
-  "Surfside",
-  "Coral Gables",
-  "Coconut Grove",
-  "Key Biscayne",
-  "Aventura",
-  "Fort Lauderdale",
-  "Parkland",
-  "Plantation",
-  "Weston",
-  "Boca Raton",
-];
 
 export async function fetchSparkResoListings({
   limit = 48,
@@ -152,16 +136,13 @@ function buildLuxuryFilter({
   newConstruction,
   mode,
 }) {
-  const filters = ["StandardStatus eq 'Active'"];
-  const cityFilter = TARGET_CITIES.map((city) => `City eq '${city.replace(/'/g, "''")}'`).join(" or ");
+  const filters = ["StandardStatus eq 'Active'", "(StateOrProvince eq 'FL' or StateOrProvince eq 'Florida')"];
 
   filters.push(`ListPrice ge ${Number(minPrice) || 600000}`);
   if (Number(maxPrice)) filters.push(`ListPrice le ${Number(maxPrice)}`);
 
-  if (city && city !== "All South Florida") {
+  if (city && city !== "All Florida" && city !== "All South Florida") {
     filters.push(`City eq '${escapeODataString(city)}'`);
-  } else {
-    filters.push(`(${cityFilter})`);
   }
 
   if (neighborhood && neighborhood !== "Any") {
