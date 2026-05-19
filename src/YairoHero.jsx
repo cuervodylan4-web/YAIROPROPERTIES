@@ -453,6 +453,7 @@ function listingParamsFromValues(values, modeKey = "buy", limit = 48) {
 
   const fieldMap = {
     "City / Area": "city",
+    "Address Search": "address",
     "Property Type": "propertyType",
     Bedrooms: "beds",
     Beds: "beds",
@@ -501,6 +502,7 @@ function getInitialListingState() {
   const sqft = params.get("sqft");
 
   if (city) values["City / Area"] = city;
+  if (params.get("address")) values["Address Search"] = params.get("address");
   if (propertyType) values["Property Type"] = propertyType;
   if (beds) values.Beds = `${beds}+`;
   if (baths) values.Baths = `${baths}+`;
@@ -2437,10 +2439,10 @@ function ListingsPageSection({ standalone = false }) {
     const timer = window.setTimeout(() => {
       loadFilteredPlatformListings(query)
         .then((incoming) => {
-          if (!mounted || !incoming.length) return;
+          if (!mounted) return;
           const nextListings = incoming.map(normalizeCardListing);
           setVisibleListings(nextListings);
-          setActiveListing(nextListings[0]);
+          setActiveListing(nextListings[0] || listings[0]);
         })
         .catch(() => {})
         .finally(() => {
@@ -2546,6 +2548,16 @@ function ListingsPageSection({ standalone = false }) {
           onChange={(value) => updateFilter("Price Range", value)}
         />
 
+        <label className="listing-address-search">
+          <span>Address Search</span>
+          <input
+            type="search"
+            value={filterValues["Address Search"] || ""}
+            placeholder="Search by street, building, or address"
+            onChange={(event) => updateFilter("Address Search", event.target.value)}
+          />
+        </label>
+
         <div className="listing-filter-grid">
           {listingFilters.map((field) => (
             <LuxuryField
@@ -2577,6 +2589,12 @@ function ListingsPageSection({ standalone = false }) {
             <span>Curated Inventory</span>
             <strong>{isLoadingListings ? "Updating" : `${String(visibleListings.length).padStart(2, "0")} Residences`}</strong>
           </div>
+          {!isLoadingListings && !visibleListings.length && (
+            <div className="listings-empty-state">
+              <span>No Matching Residences</span>
+              <p>Try a shorter address, another city, or a wider price range.</p>
+            </div>
+          )}
           {visibleListings.map((listing, index) => (
             <ListingResultCard
               key={listing.id}

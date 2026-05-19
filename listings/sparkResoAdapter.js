@@ -7,6 +7,7 @@ export async function fetchSparkResoListings({
   minPrice = 600000,
   maxPrice,
   city,
+  address,
   neighborhood,
   propertyType,
   beds,
@@ -29,6 +30,7 @@ export async function fetchSparkResoListings({
       minPrice,
       maxPrice,
       city,
+      address,
       neighborhood,
       propertyType,
       beds,
@@ -127,6 +129,7 @@ function buildLuxuryFilter({
   minPrice,
   maxPrice,
   city,
+  address,
   neighborhood,
   propertyType,
   beds,
@@ -143,6 +146,10 @@ function buildLuxuryFilter({
 
   if (city && city !== "All Florida" && city !== "All South Florida") {
     filters.push(`City eq '${escapeODataString(city)}'`);
+  }
+
+  if (address && String(address).trim().length >= 3) {
+    filters.push(`contains(tolower(UnparsedAddress), '${escapeODataString(String(address).trim().toLowerCase())}')`);
   }
 
   if (neighborhood && neighborhood !== "Any") {
