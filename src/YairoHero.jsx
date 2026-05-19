@@ -343,7 +343,6 @@ function normalizeDetailProperty(listing) {
     gallery,
     price: card.price,
     specs: listing.specs || propertyDetail.specs,
-    places: listing.places || propertyDetail.places,
     intelligence: listing.intelligence || propertyDetail.intelligence,
     marketPosition: listing.marketPosition || propertyDetail.marketPosition,
     narrative: listing.narrative || listing.description || propertyDetail.narrative,
@@ -643,12 +642,6 @@ const propertyDetail = {
   ],
   narrative:
     "Positioned along one of Miami Beach's most discreet waterfront corridors, this North Bay Road residence is composed around privacy, horizon, and a quiet sequence of indoor-outdoor rooms. Warm stone, deep overhangs, and full-height glazing create a residence that feels cinematic without becoming theatrical.",
-  places: [
-    { label: "Sunset Harbour Marina", type: "Marina", x: 34, y: 48 },
-    { label: "La Gorce Country Club", type: "Golf", x: 46, y: 26 },
-    { label: "Bal Harbour Shops", type: "Shopping", x: 72, y: 18 },
-    { label: "Surf Club Restaurant", type: "Dining", x: 66, y: 36 },
-  ],
   intelligence: [
     ["Median Luxury Sale", "$12.8M", "12-month waterfront benchmark"],
     ["Buyer Demand", "High", "Low inventory along prime bayfront streets"],
@@ -2916,13 +2909,6 @@ function PropertyMap({ property }) {
         />
         <div className="map-satellite-shade" />
         <div className="property-main-pin"><span>{property.price}</span></div>
-        {property.places.map((place) => (
-          <div key={place.label} className="property-place-pin" style={{ left: `${place.x}%`, top: `${place.y}%` }}>
-            <i />
-            <span>{place.type}</span>
-            <strong>{place.label}</strong>
-          </div>
-        ))}
       </div>
     </section>
   );

@@ -74,12 +74,6 @@ export function normalizeListing(record, context = {}) {
       ["HOA", record.AssociationFee ? formatAssociationFee(record.AssociationFee, record.AssociationFeeFrequency) : "Upon request"],
       ["Architecture", architecture || "Residential"],
     ],
-    places: [
-      { label: "Miami waterfront", type: "Water", x: 38, y: 48 },
-      { label: "Dining corridor", type: "Dining", x: 62, y: 34 },
-      { label: "Retail access", type: "Shopping", x: 72, y: 54 },
-      { label: "Private advisory area", type: "Market", x: 48, y: 68 },
-    ],
     intelligence: [
       ["Market Status", formatStatus(record.StandardStatus || record.MlsStatus || "Active"), "Live MLS positioning through Spark RESO data."],
       ["Property Type", propertyType || "Residential", "Reviewed through location, condition, and long-term fit."],

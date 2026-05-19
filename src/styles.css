@@ -4078,7 +4078,6 @@ h1 em {
 .intel-card span,
 .concierge-inquiry span,
 .property-hero-cta,
-.property-place-pin span,
 .property-main-pin span {
   font-family: "SFMono-Regular", Consolas, monospace;
   text-transform: uppercase;
@@ -4322,42 +4321,10 @@ h1 em {
   translate: -50% -50%;
 }
 
-.property-main-pin span,
-.property-place-pin span {
+.property-main-pin span {
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.16em;
-}
-
-.property-place-pin {
-  position: absolute;
-  z-index: 3;
-  display: grid;
-  gap: 5px;
-  max-width: 170px;
-  border: 1px solid rgba(255, 255, 255, 0.26);
-  padding: 10px 12px;
-  background: rgba(8, 9, 8, 0.48);
-  color: #ffffff;
-  backdrop-filter: blur(14px);
-  translate: -50% -50%;
-}
-
-.property-place-pin i {
-  width: 12px;
-  height: 12px;
-  border-radius: 999px;
-  background: #123832;
-  box-shadow: 0 0 0 8px rgba(255, 255, 255, 0.74), 0 18px 36px rgba(8, 9, 8, 0.18);
-}
-
-.property-place-pin span {
-  color: rgba(255, 255, 255, 0.66);
-}
-
-.property-place-pin strong {
-  font-size: 13px;
-  font-weight: 500;
 }
 
 .intel-grid {
@@ -5696,10 +5663,6 @@ html.is-cursor-pressed .luxury-cursor-ring {
     min-height: 560px;
   }
 
-  .property-place-pin {
-    max-width: 130px;
-  }
-
   .intel-grid,
   .concierge-inquiry {
     grid-template-columns: 1fr;
@@ -5954,10 +5917,6 @@ html.is-cursor-pressed .luxury-cursor-ring {
 
   .property-main-pin {
     min-width: 116px;
-  }
-
-  .property-place-pin strong {
-    display: none;
   }
 }
 
