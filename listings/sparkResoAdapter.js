@@ -91,12 +91,14 @@ export async function fetchSparkResoListings({
   const payload = await requestReso(`Property?${params.toString()}`);
   const records = Array.isArray(payload?.value) ? payload.value : [];
 
-  return records.map((record) =>
+  const listings = records.map((record) =>
     normalizeListing(record, {
       source: "spark-reso",
       sourceId: process.env.SPARK_SOURCE_API_ID || null,
     })
   );
+
+  return dedupeListings(listings).slice(0, Number(limit) || 48);
 }
 
 export async function fetchSparkResoListingBySlug(slug) {
@@ -185,6 +187,44 @@ function buildLuxuryFilter({
 
 function escapeODataString(value) {
   return String(value).replace(/'/g, "''");
+}
+
+function dedupeListings(listings) {
+  const seen = new Set();
+
+  return listings.filter((listing) => {
+    const keys = [
+      listing.listingKey ? `key:${listing.listingKey}` : "",
+      listing.mlsId ? `mls:${listing.mlsId}` : "",
+      listing.address
+        ? `address:${normalizeDedupeValue(listing.address)}|${listing.price || ""}|${listing.beds || ""}|${
+            listing.baths || ""
+          }|${listing.sqft || ""}`
+        : "",
+    ].filter(Boolean);
+
+    if (!keys.length) return true;
+    if (keys.some((key) => seen.has(key))) return false;
+
+    keys.forEach((key) => seen.add(key));
+    return true;
+  });
+}
+
+function normalizeDedupeValue(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/\b(street|st)\b/g, "st")
+    .replace(/\b(avenue|ave)\b/g, "ave")
+    .replace(/\b(court|ct)\b/g, "ct")
+    .replace(/\b(road|rd)\b/g, "rd")
+    .replace(/\b(drive|dr)\b/g, "dr")
+    .replace(/\b(northeast|ne)\b/g, "ne")
+    .replace(/\b(northwest|nw)\b/g, "nw")
+    .replace(/\b(southeast|se)\b/g, "se")
+    .replace(/\b(southwest|sw)\b/g, "sw")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
 }
 
 function extractListingKey(value) {
