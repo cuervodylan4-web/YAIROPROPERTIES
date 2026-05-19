@@ -32,6 +32,7 @@ const RENT_STOPS = [
   { pos: 92, value: 120000 },
   { pos: 100, value: 300000 },
 ];
+const FALLBACK_PROPERTY_IMAGE = "/videos/optimized/miami-hero-02-poster.jpg";
 
 const serviceAreas = [
   "Parkland",
@@ -285,6 +286,81 @@ const listings = [
     pin: { x: 72, y: 20 },
   },
 ];
+
+function formatCardPrice(listing) {
+  if (listing.displayPrice) return listing.displayPrice;
+  if (typeof listing.price === "string") return listing.price;
+  if (Number(listing.price) >= 1000000) {
+    return `$${Number((Number(listing.price) / 1000000).toFixed(Number(listing.price) >= 10000000 ? 0 : 1))}M`;
+  }
+  return listing.price ? `$${Math.round(Number(listing.price) / 1000)}K` : "Upon Request";
+}
+
+function normalizeCardListing(listing, index = 0) {
+  const gallery = listing.gallery || listing.media || [];
+  const heroImage = listing.heroImage || listing.image || gallery[0] || FALLBACK_PROPERTY_IMAGE;
+  const price = formatCardPrice(listing);
+  const location = listing.location || [listing.city, listing.neighborhood].filter(Boolean).join(" / ") || "South Florida";
+
+  return {
+    ...listing,
+    id: listing.slug || listing.id || listing.listingKey || `spark-listing-${index}`,
+    image: heroImage,
+    heroImage,
+    gallery: gallery.length ? gallery : [heroImage],
+    status: listing.status || "Active",
+    title: listing.title || listing.address || "Private Residence",
+    address: listing.address || listing.title || "Address available by request",
+    location,
+    price,
+    beds: listing.beds || 0,
+    baths: listing.baths || 0,
+    sqft: listing.displaySqft || listing.sqft || "Available by request",
+    description:
+      listing.description ||
+      "A curated South Florida residence with private context available through Yairo Properties.",
+    pin: listing.pin || listing.map || { x: 50, y: 48 },
+  };
+}
+
+function normalizeFeaturedListing(listing, index = 0) {
+  const card = normalizeCardListing(listing, index);
+
+  return {
+    ...card,
+    city: listing.city || card.location.split(" / ")[0] || "South Florida",
+    neighborhood: listing.neighborhood || card.location.split(" / ")[1] || "Private Market",
+    sqft: listing.displaySqft || card.sqft,
+  };
+}
+
+function normalizeDetailProperty(listing) {
+  const card = normalizeCardListing(listing);
+  const gallery = listing.gallery?.length ? listing.gallery : card.gallery;
+
+  return {
+    ...propertyDetail,
+    ...listing,
+    ...card,
+    gallery,
+    price: card.price,
+    specs: listing.specs || propertyDetail.specs,
+    places: listing.places || propertyDetail.places,
+    intelligence: listing.intelligence || propertyDetail.intelligence,
+    marketPosition: listing.marketPosition || propertyDetail.marketPosition,
+    narrative: listing.narrative || listing.description || propertyDetail.narrative,
+  };
+}
+
+async function loadPlatformListings({ limit = 60 } = {}) {
+  const response = await fetch(`/api/listings?limit=${limit}`, {
+    headers: { Accept: "application/json" },
+  });
+
+  if (!response.ok) throw new Error(`Listings request failed: ${response.status}`);
+  const payload = await response.json();
+  return Array.isArray(payload.listings) ? payload.listings : [];
+}
 
 const neighborhoods = [
   {
@@ -852,14 +928,14 @@ export function ListingsPage() {
   );
 }
 
-export function PropertyDetailPage() {
+export function PropertyDetailPage({ property = propertyDetail }) {
   return (
     <main className="site-shell property-site">
       <CustomCursor />
       <FloatingWhatsApp />
       <PrimaryNav tone="dark" />
       <LeadCapturePopup />
-      <PropertyDetailExperience property={propertyDetail} />
+      <PropertyDetailExperience property={normalizeDetailProperty(property)} />
       <SiteFooter />
     </main>
   );
@@ -1639,6 +1715,7 @@ function LuxurySwitch({ label, checked, onChange }) {
 function FeaturedPropertiesSection() {
   const sectionRef = useRef(null);
   const carouselRef = useRef(null);
+  const [properties, setProperties] = useState(featuredProperties);
   const moveCarousel = (direction) => {
     const carousel = carouselRef.current;
     if (!carousel) return;
@@ -1647,6 +1724,21 @@ function FeaturedPropertiesSection() {
       behavior: "smooth",
     });
   };
+
+  useEffect(() => {
+    let mounted = true;
+
+    loadPlatformListings({ limit: 9 })
+      .then((incoming) => {
+        if (!mounted || !incoming.length) return;
+        setProperties(incoming.slice(0, 9).map(normalizeFeaturedListing));
+      })
+      .catch(() => {});
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   return (
     <section ref={sectionRef} id="featured-properties" className="featured-section">
@@ -1675,7 +1767,7 @@ function FeaturedPropertiesSection() {
           </motion.button>
         </div>
         <div ref={carouselRef} className="featured-carousel" aria-label="Featured properties">
-          {featuredProperties.map((property, index) => (
+          {properties.map((property, index) => (
             <FeaturedPropertyCard
               key={property.id}
               property={property}
@@ -2090,12 +2182,30 @@ function ListingsPageSection({ standalone = false }) {
     "Price Range": [1000000, 25000000],
     Waterfront: true,
   });
+  const [visibleListings, setVisibleListings] = useState(listings);
   const [activeListing, setActiveListing] = useState(listings[0]);
   const { scrollYProgress } = useScroll({
     target: sectionRef,
     offset: ["start start", "end start"],
   });
   const heroImageY = useTransform(scrollYProgress, [0, 0.5], [0, 46]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    loadPlatformListings({ limit: 60 })
+      .then((incoming) => {
+        if (!mounted || !incoming.length) return;
+        const nextListings = incoming.map(normalizeCardListing);
+        setVisibleListings(nextListings);
+        setActiveListing(nextListings[0]);
+      })
+      .catch(() => {});
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const updateFilter = (label, value) => {
     setFilterValues((current) => ({ ...current, [label]: value }));
@@ -2218,9 +2328,9 @@ function ListingsPageSection({ standalone = false }) {
         <div id="listing-results" className="listings-results">
           <div className="listings-count">
             <span>Curated Inventory</span>
-            <strong>{String(listings.length).padStart(2, "0")} Residences</strong>
+            <strong>{String(visibleListings.length).padStart(2, "0")} Residences</strong>
           </div>
-          {listings.map((listing, index) => (
+          {visibleListings.map((listing, index) => (
             <ListingResultCard
               key={listing.id}
               listing={listing}
@@ -2230,7 +2340,7 @@ function ListingsPageSection({ standalone = false }) {
             />
           ))}
         </div>
-        <LuxuryMap listings={listings} activeListing={activeListing} onActivate={setActiveListing} />
+        <LuxuryMap listings={visibleListings} activeListing={activeListing} onActivate={setActiveListing} />
       </div>
 
       <MiamiNeighborhoodsSection />
