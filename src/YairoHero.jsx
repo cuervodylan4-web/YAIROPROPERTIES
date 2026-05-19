@@ -212,11 +212,11 @@ const featuredProperties = [
 ];
 
 const listingFilters = [
-  { label: "Neighborhood", options: ["All Miami", "Miami Beach", "Fisher Island", "Brickell", "Coconut Grove", "Surfside"] },
-  { label: "Beds", options: ["Any", "2+", "3+", "4+", "5+"] },
-  { label: "Baths", options: ["Any", "2+", "3+", "4+", "5+"] },
-  { label: "Square Footage", options: ["Any", "2,000+", "4,000+", "6,000+", "8,000+"] },
-  { label: "Architectural Style", options: ["Any", "Modern", "Waterfront Estate", "Penthouse", "Mediterranean", "Tropical Modern"] },
+  { label: "City / Area", param: "city", options: ["All South Florida", "Miami", "Miami Beach", "Fort Lauderdale", "Boca Raton", "Coral Gables", "Coconut Grove", "Bal Harbour", "Sunny Isles Beach", "Aventura", "Parkland", "Plantation", "Weston"] },
+  { label: "Property Type", param: "propertyType", options: ["Any", "Single Family Residence", "Condominium", "Townhouse", "Villa"] },
+  { label: "Beds", param: "beds", options: ["Any", "2+", "3+", "4+", "5+"] },
+  { label: "Baths", param: "baths", options: ["Any", "2+", "3+", "4+", "5+"] },
+  { label: "Square Footage", param: "sqft", options: ["Any", "1,500+", "2,500+", "4,000+", "6,000+"] },
 ];
 
 const listings = [
@@ -309,7 +309,7 @@ function normalizeCardListing(listing, index = 0) {
     heroImage,
     gallery: gallery.length ? gallery : [heroImage],
     status: listing.status || "Active",
-    title: listing.title || listing.address || "Private Residence",
+    title: listing.streetAddress || listing.title || listing.address || "Private Residence",
     address: listing.address || listing.title || "Address available by request",
     location,
     price,
@@ -352,8 +352,55 @@ function normalizeDetailProperty(listing) {
   };
 }
 
+function parseFilterNumber(value) {
+  if (!value || value === "Any") return "";
+  return String(value).replace(/[^\d.]/g, "");
+}
+
+function buildListingsQuery(filterValues, listingMode, limit = 60) {
+  const priceRange = filterValues["Price Range"] || [600000, 25000000];
+  const params = new URLSearchParams({
+    limit: String(limit),
+    mode: listingMode,
+    minPrice: String(Math.round(priceRange[0])),
+    maxPrice: String(Math.round(priceRange[1])),
+  });
+
+  listingFilters.forEach((field) => {
+    const value = filterValues[field.label];
+    if (!value || value === "Any" || value === "All South Florida") return;
+    if (["beds", "baths", "sqft"].includes(field.param)) {
+      params.set(field.param, parseFilterNumber(value));
+      return;
+    }
+    params.set(field.param, value);
+  });
+
+  if (filterValues.Waterfront) params.set("waterfront", "true");
+  if (filterValues["New Construction"]) params.set("newConstruction", "true");
+
+  return params.toString();
+}
+
+function googleMapsEmbedUrl(listing) {
+  const lat = listing?.map?.lat;
+  const lng = listing?.map?.lng;
+  const query = lat && lng ? `${lat},${lng}` : listing?.address || "Miami, Florida";
+  return `https://maps.google.com/maps?q=${encodeURIComponent(query)}&z=16&t=k&output=embed`;
+}
+
 async function loadPlatformListings({ limit = 60 } = {}) {
   const response = await fetch(`/api/listings?limit=${limit}`, {
+    headers: { Accept: "application/json" },
+  });
+
+  if (!response.ok) throw new Error(`Listings request failed: ${response.status}`);
+  const payload = await response.json();
+  return Array.isArray(payload.listings) ? payload.listings : [];
+}
+
+async function loadFilteredPlatformListings(query) {
+  const response = await fetch(`/api/listings?${query}`, {
     headers: { Accept: "application/json" },
   });
 
@@ -2179,11 +2226,11 @@ function ListingsPageSection({ standalone = false }) {
   const [listingMode, setListingMode] = useState("buy");
   const [openFilter, setOpenFilter] = useState(null);
   const [filterValues, setFilterValues] = useState({
-    "Price Range": [1000000, 25000000],
-    Waterfront: true,
+    "Price Range": [600000, 25000000],
   });
   const [visibleListings, setVisibleListings] = useState(listings);
   const [activeListing, setActiveListing] = useState(listings[0]);
+  const [isLoadingListings, setIsLoadingListings] = useState(false);
   const { scrollYProgress } = useScroll({
     target: sectionRef,
     offset: ["start start", "end start"],
@@ -2206,6 +2253,31 @@ function ListingsPageSection({ standalone = false }) {
       mounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    const query = buildListingsQuery(filterValues, listingMode, 60);
+
+    setIsLoadingListings(true);
+    const timer = window.setTimeout(() => {
+      loadFilteredPlatformListings(query)
+        .then((incoming) => {
+          if (!mounted || !incoming.length) return;
+          const nextListings = incoming.map(normalizeCardListing);
+          setVisibleListings(nextListings);
+          setActiveListing(nextListings[0]);
+        })
+        .catch(() => {})
+        .finally(() => {
+          if (mounted) setIsLoadingListings(false);
+        });
+    }, 220);
+
+    return () => {
+      mounted = false;
+      window.clearTimeout(timer);
+    };
+  }, [filterValues, listingMode]);
 
   const updateFilter = (label, value) => {
     setFilterValues((current) => ({ ...current, [label]: value }));
@@ -2284,7 +2356,7 @@ function ListingsPageSection({ standalone = false }) {
               className={listingMode === mode ? "is-active" : ""}
               onClick={() => {
                 setListingMode(mode);
-                updateFilter("Price Range", mode === "buy" ? [1000000, 25000000] : [8000, 45000]);
+                updateFilter("Price Range", mode === "buy" ? [600000, 25000000] : [2500, 45000]);
               }}
             >
               {mode}
@@ -2313,7 +2385,7 @@ function ListingsPageSection({ standalone = false }) {
         </div>
 
         <div className="listing-filter-toggles">
-          {["Waterfront", "New Construction", "Off-Market / Private"].map((label) => (
+          {["Waterfront", "New Construction"].map((label) => (
             <LuxuryCheckbox
               key={label}
               label={label}
@@ -2328,7 +2400,7 @@ function ListingsPageSection({ standalone = false }) {
         <div id="listing-results" className="listings-results">
           <div className="listings-count">
             <span>Curated Inventory</span>
-            <strong>{String(visibleListings.length).padStart(2, "0")} Residences</strong>
+            <strong>{isLoadingListings ? "Updating" : `${String(visibleListings.length).padStart(2, "0")} Residences`}</strong>
           </div>
           {visibleListings.map((listing, index) => (
             <ListingResultCard
@@ -2649,7 +2721,7 @@ function ListingResultCard({ listing, index, isActive, onFocus }) {
           <span>{listing.sqft}</span>
         </div>
         <p>{listing.description}</p>
-        <MagneticAnchor className="listing-card-link" href={`/property/${listing.id}`} strength={0.16}>
+        <MagneticAnchor className="listing-card-link" href={`/property/${listing.listingKey || listing.id}`} strength={0.16}>
           View Residence
         </MagneticAnchor>
       </div>
@@ -2783,15 +2855,22 @@ function PropertyImageGallery({ property, onOpen }) {
 }
 
 function PropertyMap({ property }) {
+  const mapUrl = googleMapsEmbedUrl(property);
+
   return (
     <section className="property-map-section">
       <div className="property-section-heading">
         <span>Waterfront Positioning</span>
-        <h2>Minutes from Miami's private leisure circuit.</h2>
+        <h2>{property.city || "South Florida"} positioning, reviewed in context.</h2>
       </div>
       <div className="property-map-canvas">
-        <div className="property-map-water" />
-        <div className="property-map-land" />
+        <iframe
+          src={mapUrl}
+          title={`${property.title} satellite map`}
+          loading="lazy"
+          referrerPolicy="no-referrer-when-downgrade"
+        />
+        <div className="map-satellite-shade" />
         <div className="property-main-pin"><span>{property.price}</span></div>
         {property.places.map((place) => (
           <div key={place.label} className="property-place-pin" style={{ left: `${place.x}%`, top: `${place.y}%` }}>
@@ -2859,25 +2938,21 @@ function ConciergeInquiry({ property }) {
 }
 
 function LuxuryMap({ listings, activeListing, onActivate }) {
+  const mapUrl = googleMapsEmbedUrl(activeListing);
+
   return (
     <aside id="listings-map" className="luxury-map" aria-label="Luxury Miami property map">
       <div className="map-canvas">
-        <div className="map-water" />
-        <div className="map-land" />
-        <div className="map-grid" />
-        {listings.map((listing) => (
-          <button
-            key={listing.id}
-            type="button"
-            className={activeListing.id === listing.id ? "map-pin is-active" : "map-pin"}
-            style={{ left: `${listing.pin.x}%`, top: `${listing.pin.y}%` }}
-            onMouseEnter={() => onActivate(listing)}
-            onClick={() => onActivate(listing)}
-            aria-label={`Preview ${listing.title}`}
-          >
-            <span />
-          </button>
-        ))}
+        <iframe
+          key={activeListing.id}
+          src={mapUrl}
+          title={`${activeListing.title} satellite map`}
+          loading="lazy"
+          referrerPolicy="no-referrer-when-downgrade"
+        />
+        <div className="map-satellite-shade" />
+        <div className="map-active-pin" aria-hidden="true"><span /></div>
+        <div className="map-market-count">{listings.length} Active Matches</div>
         <AnimatePresence mode="wait">
           <motion.div
             key={activeListing.id}

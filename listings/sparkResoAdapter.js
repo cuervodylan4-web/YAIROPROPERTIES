@@ -18,14 +18,43 @@ const TARGET_CITIES = [
   "Boca Raton",
 ];
 
-export async function fetchSparkResoListings({ limit = 60, minPrice = 600000, expand = "Media" } = {}) {
+export async function fetchSparkResoListings({
+  limit = 60,
+  minPrice = 600000,
+  maxPrice,
+  city,
+  neighborhood,
+  propertyType,
+  beds,
+  baths,
+  sqft,
+  waterfront,
+  newConstruction,
+  mode = "buy",
+  expand = "Media",
+} = {}) {
   const token = process.env.SPARK_ACCESS_TOKEN;
   if (!token) return [];
 
   const params = new URLSearchParams();
   params.set("$top", String(Math.min(Number(limit) || 60, 100)));
   params.set("$orderby", "ModificationTimestamp desc");
-  params.set("$filter", buildLuxuryFilter(minPrice));
+  params.set(
+    "$filter",
+    buildLuxuryFilter({
+      minPrice,
+      maxPrice,
+      city,
+      neighborhood,
+      propertyType,
+      beds,
+      baths,
+      sqft,
+      waterfront,
+      newConstruction,
+      mode,
+    })
+  );
   params.set(
     "$select",
     [
@@ -71,6 +100,21 @@ export async function fetchSparkResoListings({ limit = 60, minPrice = 600000, ex
 }
 
 export async function fetchSparkResoListingBySlug(slug) {
+  const listingKey = extractListingKey(slug);
+  if (listingKey) {
+    try {
+      const payload = await requestReso(`Property('${encodeURIComponent(listingKey)}')?$expand=Media`);
+      if (payload?.ListingKey) {
+        return normalizeListing(payload, {
+          source: "spark-reso",
+          sourceId: process.env.SPARK_SOURCE_API_ID || null,
+        });
+      }
+    } catch (_error) {
+      // Fall back to the active collection lookup below.
+    }
+  }
+
   const listings = await fetchSparkResoListings({ limit: 100 });
   return listings.find((listing) => listing.slug === slug || listing.listingKey === slug || listing.mlsId === slug) || null;
 }
@@ -93,7 +137,58 @@ async function requestReso(path) {
   return response.json();
 }
 
-function buildLuxuryFilter(minPrice) {
+function buildLuxuryFilter({
+  minPrice,
+  maxPrice,
+  city,
+  neighborhood,
+  propertyType,
+  beds,
+  baths,
+  sqft,
+  waterfront,
+  newConstruction,
+  mode,
+}) {
+  const filters = ["StandardStatus eq 'Active'"];
   const cityFilter = TARGET_CITIES.map((city) => `City eq '${city.replace(/'/g, "''")}'`).join(" or ");
-  return `StandardStatus eq 'Active' and ListPrice ge ${Number(minPrice) || 600000} and (${cityFilter})`;
+
+  filters.push(`ListPrice ge ${Number(minPrice) || 600000}`);
+  if (Number(maxPrice)) filters.push(`ListPrice le ${Number(maxPrice)}`);
+
+  if (city && city !== "All South Florida") {
+    filters.push(`City eq '${escapeODataString(city)}'`);
+  } else {
+    filters.push(`(${cityFilter})`);
+  }
+
+  if (neighborhood && neighborhood !== "Any") {
+    filters.push(`SubdivisionName eq '${escapeODataString(neighborhood)}'`);
+  }
+
+  if (propertyType && propertyType !== "Any") {
+    filters.push(`PropertySubType eq '${escapeODataString(propertyType)}'`);
+  } else if (mode === "rent") {
+    filters.push(`PropertyType eq 'Residential Lease'`);
+  } else {
+    filters.push(`PropertyType eq 'Residential'`);
+  }
+
+  if (Number(beds)) filters.push(`BedroomsTotal ge ${Number(beds)}`);
+  if (Number(baths)) filters.push(`BathroomsTotalDecimal ge ${Number(baths)}`);
+  if (Number(sqft)) filters.push(`LivingArea ge ${Number(sqft)}`);
+  if (waterfront === true || waterfront === "true") filters.push("WaterfrontYN eq true");
+  if (newConstruction === true || newConstruction === "true") filters.push(`YearBuilt ge ${new Date().getFullYear() - 3}`);
+
+  return filters.join(" and ");
+}
+
+function escapeODataString(value) {
+  return String(value).replace(/'/g, "''");
+}
+
+function extractListingKey(value) {
+  const text = String(value || "");
+  const match = text.match(/(\d{20,})$/);
+  return match ? match[1] : "";
 }

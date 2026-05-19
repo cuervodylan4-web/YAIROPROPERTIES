@@ -4,14 +4,20 @@ export function normalizeListing(record, context = {}) {
   const media = normalizeMedia(rawMedia);
   const listingKey = String(record.ListingKey || record.ListingId || record.id || record.mlsId || "");
   const address = record.UnparsedAddress || record.address || record.StreetName || "";
+  const streetAddress = buildStreetAddress(record, address);
   const city = record.City || record.city || "";
   const neighborhood = record.SubdivisionName || record.neighborhood || record.MLSAreaMajor || "";
   const slug = slugify(address || record.PropertyName || listingKey);
   const sqft = Number(record.LivingArea || record.BuildingAreaTotal || record.sqft || 0);
   const lat = Number(record.Latitude || record.latitude || 0);
   const lng = Number(record.Longitude || record.longitude || 0);
-  const architecture = formatListValue(record.ArchitecturalStyle || record.PropertySubType || record.PropertyType || "Residence");
-  const propertyType = formatListValue(record.PropertySubType || record.PropertyType || "Residential");
+  const architecture =
+    formatListValue(record.ArchitecturalStyle) ||
+    formatListValue(record.PropertySubType) ||
+    formatListValue(record.PropertyType) ||
+    "Residence";
+  const propertyType = formatListValue(record.PropertySubType) || formatListValue(record.PropertyType) || "Residential";
+  const baths = Number(record.BathroomsTotalDecimal || record.BathroomsTotalInteger || record.baths || 0);
 
   return {
     id: slug || listingKey,
@@ -20,15 +26,16 @@ export function normalizeListing(record, context = {}) {
     mlsId: record.ListingId || listingKey || record.mlsId || null,
     source: context.source || "unknown",
     status: formatStatus(record.StandardStatus || record.MlsStatus || record.status || "Active"),
-    title: record.PropertyName || record.title || address || "Private Residence",
+    title: record.PropertyName || record.title || streetAddress || address || "Private Residence",
     address,
+    streetAddress,
     city,
     neighborhood,
     location: [city, neighborhood].filter(Boolean).join(" / "),
     price,
     displayPrice: price ? formatDisplayPrice(price) : "Upon Request",
     beds: Number(record.BedroomsTotal || record.beds || 0),
-    baths: Number(record.BathroomsTotalInteger || record.BathroomsTotalDecimal || record.baths || 0),
+    baths,
     sqft,
     displaySqft: sqft ? `${new Intl.NumberFormat("en-US").format(sqft)} SF` : "Available by request",
     waterfront: Boolean(record.WaterfrontYN || record.waterfront),
@@ -54,7 +61,7 @@ export function normalizeListing(record, context = {}) {
     marketPosition: [propertyType, city || "South Florida"].filter(Boolean).join(" / "),
     specs: [
       ["Bedrooms", String(Number(record.BedroomsTotal || record.beds || 0) || "Upon request")],
-      ["Bathrooms", String(Number(record.BathroomsTotalInteger || record.BathroomsTotalDecimal || record.baths || 0) || "Upon request")],
+      ["Bathrooms", baths ? String(baths) : "Upon request"],
       ["Square Footage", sqft ? `${new Intl.NumberFormat("en-US").format(sqft)} SF` : "Upon request"],
       ["Waterfront", record.WaterfrontYN ? "Yes" : "Verify"],
       ["Year Built", record.YearBuilt ? String(record.YearBuilt) : "Upon request"],
@@ -107,6 +114,20 @@ function normalizeMedia(media) {
 function formatListValue(value) {
   if (Array.isArray(value)) return value.filter(Boolean).join(", ");
   return value || "";
+}
+
+function buildStreetAddress(record, fallback) {
+  if (record.StreetNumber && record.StreetName) {
+    return [record.StreetNumber, record.StreetDirPrefix, record.StreetName, record.StreetSuffix, record.UnitNumber && `#${record.UnitNumber}`]
+      .filter(Boolean)
+      .join(" ");
+  }
+
+  return String(fallback || "")
+    .split(",")
+    .slice(0, 1)
+    .join("")
+    .trim();
 }
 
 function formatStatus(status) {
