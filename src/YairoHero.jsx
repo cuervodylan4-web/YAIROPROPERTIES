@@ -198,6 +198,7 @@ const searchModes = {
     fields: [
       { label: "Address Search", placeholder: "Street, building, or address" },
       CITY_FIELD,
+      { label: "Listing Status", options: ["Active", "Sold", "All Status"] },
       { label: "Property Type", options: ["Any", "Single Family Residence", "Condominium", "Townhouse", "Villa"] },
       { label: "Bedrooms", options: ["Any", "2+", "3+", "4+", "5+"] },
       { label: "Bathrooms", options: ["Any", "2+", "3+", "4+", "5+"] },
@@ -213,6 +214,7 @@ const searchModes = {
     fields: [
       { label: "Address Search", placeholder: "Street, building, or address" },
       CITY_FIELD,
+      { label: "Listing Status", options: ["Active", "Sold", "All Status"] },
       { label: "Property Type", options: ["Any", "Single Family Residence", "Condominium", "Townhouse", "Villa"] },
       { label: "Bedrooms", options: ["Any", "1+", "2+", "3+", "4+"] },
       { label: "Bathrooms", options: ["Any", "1+", "2+", "3+", "4+"] },
@@ -295,6 +297,7 @@ const featuredProperties = [
 
 const listingFilters = [
   { ...CITY_FIELD, param: "city" },
+  { label: "Listing Status", param: "status", options: ["Active", "Sold", "All Status"] },
   { label: "Property Type", param: "propertyType", options: ["Any", "Single Family Residence", "Condominium", "Townhouse", "Villa"] },
   { label: "Beds", param: "beds", options: ["Any", "2+", "3+", "4+", "5+"] },
   { label: "Baths", param: "baths", options: ["Any", "2+", "3+", "4+", "5+"] },
@@ -450,12 +453,13 @@ function listingParamsFromValues(values, modeKey = "buy", limit = 48) {
     params.set("minPrice", String(Math.round(range[0])));
     params.set("maxPrice", String(Math.round(range[1])));
   } else {
-    params.set("minPrice", modeKey === "rent" ? "1000" : "600000");
+    params.set("minPrice", modeKey === "rent" ? "1000" : "100000");
   }
 
   const fieldMap = {
     "City / Area": "city",
     "Address Search": "address",
+    "Listing Status": "status",
     "Property Type": "propertyType",
     Bedrooms: "beds",
     Beds: "beds",
@@ -486,15 +490,16 @@ function buildListingsQuery(filterValues, listingMode, limit = 60) {
 
 function getInitialListingState() {
   if (typeof window === "undefined") {
-    return { mode: "buy", values: { "Price Range": [600000, 25000000] } };
+    return { mode: "buy", values: { "Price Range": [100000, 25000000], "Listing Status": "Active" } };
   }
 
   const params = new URLSearchParams(window.location.search);
   const mode = params.get("mode") === "rent" ? "rent" : "buy";
-  const minPrice = Number(params.get("minPrice") || (mode === "rent" ? 1000 : 600000));
+  const minPrice = Number(params.get("minPrice") || (mode === "rent" ? 1000 : 100000));
   const maxPrice = Number(params.get("maxPrice") || (mode === "rent" ? 45000 : 25000000));
   const values = {
     "Price Range": [minPrice, maxPrice],
+    "Listing Status": params.get("status") || "Active",
   };
 
   const city = params.get("city");
@@ -505,6 +510,7 @@ function getInitialListingState() {
 
   if (city) values["City / Area"] = city;
   if (params.get("address")) values["Address Search"] = params.get("address");
+  if (params.get("status")) values["Listing Status"] = params.get("status");
   if (propertyType) values["Property Type"] = propertyType;
   if (beds) values.Beds = `${beds}+`;
   if (baths) values.Baths = `${baths}+`;
@@ -1642,7 +1648,7 @@ function SearchModeSection({
         <LuxuryRangeSlider
           label="Price Range"
           stops={PRICE_STOPS}
-          value={values["Price Range"] || [1000000, 25000000]}
+          value={values["Price Range"] || [100000, 25000000]}
           onChange={(value) => onUpdateValue("Price Range", value)}
         />
       )}
@@ -1781,9 +1787,11 @@ function AddressSearchField({ value, onChange, modeKey = "buy", contextValues = 
         params.set("minPrice", String(Math.round(range[0])));
         params.set("maxPrice", String(Math.round(range[1])));
       } else {
-        params.set("minPrice", modeKey === "rent" ? "1000" : "600000");
+        params.set("minPrice", modeKey === "rent" ? "1000" : "100000");
         params.set("maxPrice", modeKey === "rent" ? "45000" : "25000000");
       }
+
+      if (contextValues["Listing Status"]) params.set("status", contextValues["Listing Status"]);
 
       if (contextValues["City / Area"] && !["All Florida", "All South Florida"].includes(contextValues["City / Area"])) {
         params.set("city", contextValues["City / Area"]);
@@ -2654,7 +2662,7 @@ function ListingsPageSection({ standalone = false }) {
               className={listingMode === mode ? "is-active" : ""}
               onClick={() => {
                 setListingMode(mode);
-                updateFilter("Price Range", mode === "buy" ? [600000, 25000000] : [1000, 45000]);
+                updateFilter("Price Range", mode === "buy" ? [100000, 25000000] : [1000, 45000]);
               }}
             >
               {mode}

@@ -4,10 +4,11 @@ const DEFAULT_BASE_URL = "https://replication.sparkapi.com/Version/3/Reso/OData"
 
 export async function fetchSparkResoListings({
   limit = 48,
-  minPrice = 600000,
+  minPrice = 100000,
   maxPrice,
   city,
   address,
+  status,
   neighborhood,
   propertyType,
   beds,
@@ -31,6 +32,7 @@ export async function fetchSparkResoListings({
       maxPrice,
       city,
       address,
+      status,
       neighborhood,
       propertyType,
       beds,
@@ -49,6 +51,8 @@ export async function fetchSparkResoListings({
       "StandardStatus",
       "MlsStatus",
       "ListPrice",
+      "ClosePrice",
+      "CloseDate",
       "UnparsedAddress",
       "City",
       "StateOrProvince",
@@ -130,6 +134,7 @@ function buildLuxuryFilter({
   maxPrice,
   city,
   address,
+  status,
   neighborhood,
   propertyType,
   beds,
@@ -139,10 +144,23 @@ function buildLuxuryFilter({
   newConstruction,
   mode,
 }) {
-  const filters = ["StandardStatus eq 'Active'", "(StateOrProvince eq 'FL' or StateOrProvince eq 'Florida')"];
+  const filters = ["(StateOrProvince eq 'FL' or StateOrProvince eq 'Florida')"];
+  const statusFilter = normalizeStatusFilter(status);
+  const priceField = statusFilter === "sold" ? "ClosePrice" : "ListPrice";
 
-  filters.push(`ListPrice ge ${Number(minPrice) || 600000}`);
-  if (Number(maxPrice)) filters.push(`ListPrice le ${Number(maxPrice)}`);
+  if (statusFilter === "active") {
+    filters.push("StandardStatus eq 'Active'");
+  } else if (statusFilter === "sold") {
+    filters.push("(StandardStatus eq 'Closed' or StandardStatus eq 'Sold' or MlsStatus eq 'Sold' or MlsStatus eq 'Closed')");
+  }
+
+  if (statusFilter === "all") {
+    filters.push(`(ListPrice ge ${Number(minPrice) || 100000} or ClosePrice ge ${Number(minPrice) || 100000})`);
+    if (Number(maxPrice)) filters.push(`(ListPrice le ${Number(maxPrice)} or ClosePrice le ${Number(maxPrice)})`);
+  } else {
+    filters.push(`${priceField} ge ${Number(minPrice) || 100000}`);
+    if (Number(maxPrice)) filters.push(`${priceField} le ${Number(maxPrice)}`);
+  }
 
   if (city && city !== "All Florida" && city !== "All South Florida") {
     filters.push(`City eq '${escapeODataString(city)}'`);
@@ -175,6 +193,13 @@ function buildLuxuryFilter({
 
 function escapeODataString(value) {
   return String(value).replace(/'/g, "''");
+}
+
+function normalizeStatusFilter(status) {
+  const value = String(status || "Active").toLowerCase();
+  if (value === "sold" || value === "closed") return "sold";
+  if (value === "all status" || value === "all" || value === "any") return "all";
+  return "active";
 }
 
 function dedupeListings(listings) {

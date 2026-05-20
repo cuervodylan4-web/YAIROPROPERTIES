@@ -6,7 +6,7 @@ export const revalidate = 900;
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const limit = Number(searchParams.get("limit") || 48);
-  const minPrice = Number(searchParams.get("minPrice") || 600000);
+  const minPrice = Number(searchParams.get("minPrice") || 100000);
   const maxPrice = Number(searchParams.get("maxPrice") || 0);
   const options = {
     limit,
@@ -14,6 +14,7 @@ export async function GET(request) {
     maxPrice,
     city: searchParams.get("city") || undefined,
     address: searchParams.get("address") || undefined,
+    status: searchParams.get("status") || undefined,
     neighborhood: searchParams.get("neighborhood") || undefined,
     propertyType: searchParams.get("propertyType") || undefined,
     beds: Number(searchParams.get("beds") || 0),

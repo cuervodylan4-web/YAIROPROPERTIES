@@ -1,5 +1,7 @@
 export function normalizeListing(record, context = {}) {
-  const price = Number(record.ListPrice || record.CurrentPrice || record.price || record.listPrice || 0);
+  const status = formatStatus(record.StandardStatus || record.MlsStatus || record.status || "Active");
+  const isSold = status === "Sold";
+  const price = Number((isSold && record.ClosePrice) || record.ListPrice || record.CurrentPrice || record.price || record.listPrice || 0);
   const rawMedia = record.Media || record.media || record.images || [];
   const media = normalizeMedia(rawMedia);
   const listingKey = String(record.ListingKey || record.ListingId || record.id || record.mlsId || "");
@@ -29,7 +31,7 @@ export function normalizeListing(record, context = {}) {
     listingKey,
     mlsId: record.ListingId || listingKey || record.mlsId || null,
     source: context.source || "unknown",
-    status: formatStatus(record.StandardStatus || record.MlsStatus || record.status || "Active"),
+    status,
     title: record.PropertyName || record.title || streetAddress || address || "Private Residence",
     address,
     streetAddress,
@@ -75,7 +77,7 @@ export function normalizeListing(record, context = {}) {
       ["Architecture", architecture || "Residential"],
     ],
     intelligence: [
-      ["Market Status", formatStatus(record.StandardStatus || record.MlsStatus || "Active"), "Live MLS positioning through Spark RESO data."],
+      ["Market Status", status, "Live MLS positioning through Spark RESO data."],
       ["Property Type", propertyType || "Residential", "Reviewed through location, condition, and long-term fit."],
       ["Waterfront", record.WaterfrontYN ? "Yes" : "Verify", "Water orientation and access should be confirmed during advisory."],
       ["MLS Reference", record.ListingId || listingKey || "Available", "Source record connected through SparkPlatform RESO Web API."],
@@ -136,9 +138,11 @@ function summarizeRemarks(value) {
 }
 
 function formatStatus(status) {
-  return String(status || "Active")
+  const formatted = String(status || "Active")
     .replace(/([a-z])([A-Z])/g, "$1 $2")
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
+  if (formatted === "Closed") return "Sold";
+  return formatted;
 }
 
 function formatAssociationFee(value, frequency) {
