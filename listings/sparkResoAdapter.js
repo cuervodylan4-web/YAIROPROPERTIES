@@ -145,7 +145,8 @@ function buildLuxuryFilter({
   mode,
 }) {
   const filters = ["(StateOrProvince eq 'FL' or StateOrProvince eq 'Florida')"];
-  const statusFilter = normalizeStatusFilter(status);
+  const hasAddressSearch = Boolean(address && String(address).trim().length >= 3);
+  const statusFilter = hasAddressSearch ? "all" : normalizeStatusFilter(status);
   const priceField = statusFilter === "sold" ? "ClosePrice" : "ListPrice";
 
   if (statusFilter === "active") {
@@ -154,12 +155,14 @@ function buildLuxuryFilter({
     filters.push("(StandardStatus eq 'Closed' or StandardStatus eq 'Sold' or MlsStatus eq 'Sold' or MlsStatus eq 'Closed')");
   }
 
-  if (statusFilter === "all") {
-    filters.push(`(ListPrice ge ${Number(minPrice) || 100000} or ClosePrice ge ${Number(minPrice) || 100000})`);
-    if (Number(maxPrice)) filters.push(`(ListPrice le ${Number(maxPrice)} or ClosePrice le ${Number(maxPrice)})`);
-  } else {
-    filters.push(`${priceField} ge ${Number(minPrice) || 100000}`);
-    if (Number(maxPrice)) filters.push(`${priceField} le ${Number(maxPrice)}`);
+  if (!hasAddressSearch) {
+    if (statusFilter === "all") {
+      filters.push(`(ListPrice ge ${Number(minPrice) || 100000} or ClosePrice ge ${Number(minPrice) || 100000})`);
+      if (Number(maxPrice)) filters.push(`(ListPrice le ${Number(maxPrice)} or ClosePrice le ${Number(maxPrice)})`);
+    } else {
+      filters.push(`${priceField} ge ${Number(minPrice) || 100000}`);
+      if (Number(maxPrice)) filters.push(`${priceField} le ${Number(maxPrice)}`);
+    }
   }
 
   if (city && city !== "All Florida" && city !== "All South Florida") {

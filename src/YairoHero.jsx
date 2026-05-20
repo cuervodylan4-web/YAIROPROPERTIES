@@ -1779,19 +1779,9 @@ function AddressSearchField({ value, onChange, modeKey = "buy", contextValues = 
       const params = new URLSearchParams({
         mode: modeKey,
         address: trimmedQuery,
-        limit: "5",
+        limit: "10",
       });
-      const range = modeKey === "rent" ? contextValues["Monthly Budget"] || contextValues["Price Range"] : contextValues["Price Range"];
-
-      if (Array.isArray(range)) {
-        params.set("minPrice", String(Math.round(range[0])));
-        params.set("maxPrice", String(Math.round(range[1])));
-      } else {
-        params.set("minPrice", modeKey === "rent" ? "1000" : "100000");
-        params.set("maxPrice", modeKey === "rent" ? "45000" : "25000000");
-      }
-
-      if (contextValues["Listing Status"]) params.set("status", contextValues["Listing Status"]);
+      params.set("status", "All Status");
 
       if (contextValues["City / Area"] && !["All Florida", "All South Florida"].includes(contextValues["City / Area"])) {
         params.set("city", contextValues["City / Area"]);
@@ -1800,7 +1790,7 @@ function AddressSearchField({ value, onChange, modeKey = "buy", contextValues = 
       loadFilteredPlatformListings(params.toString())
         .then((incoming) => {
           if (!mounted) return;
-          setSuggestions(incoming.slice(0, 5).map(normalizeCardListing));
+          setSuggestions(incoming.slice(0, 8).map(normalizeCardListing));
         })
         .catch(() => {
           if (mounted) setSuggestions([]);
