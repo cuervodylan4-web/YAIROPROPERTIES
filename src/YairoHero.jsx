@@ -1757,6 +1757,7 @@ function AddressSearchField({ value, onChange, modeKey = "buy", contextValues = 
   const [query, setQuery] = useState(value || "");
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
   const trimmedQuery = query.trim();
 
   useEffect(() => {
@@ -1814,19 +1815,23 @@ function AddressSearchField({ value, onChange, modeKey = "buy", contextValues = 
   const handleSelect = (listing) => {
     handleChange(listing.address);
     setSuggestions([]);
+    setIsFocused(false);
   };
+  const showSuggestions = isFocused && trimmedQuery.length >= 3 && (loading || suggestions.length > 0);
 
   return (
-    <div className={variant === "listing" ? "listing-address-search has-suggestions" : "luxury-field input-field address-autocomplete"}>
+    <div className={variant === "listing" ? `listing-address-search${showSuggestions ? " has-suggestions" : ""}` : "luxury-field input-field address-autocomplete"}>
       <span>Address Search</span>
       <input
         type="search"
         value={query}
         placeholder="Search by street, building, or address"
         onChange={(event) => handleChange(event.target.value)}
+        onFocus={() => setIsFocused(true)}
+        onBlur={() => window.setTimeout(() => setIsFocused(false), 140)}
       />
       <AnimatePresence>
-        {trimmedQuery.length >= 3 && (loading || suggestions.length > 0) && (
+        {showSuggestions && (
           <motion.div
             className="address-suggestions"
             initial={{ opacity: 0, y: -8 }}
@@ -1836,7 +1841,7 @@ function AddressSearchField({ value, onChange, modeKey = "buy", contextValues = 
           >
             {loading && !suggestions.length && <p>Searching residences...</p>}
             {suggestions.map((listing) => (
-              <button key={listing.id} type="button" onClick={() => handleSelect(listing)}>
+              <button key={listing.id} type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => handleSelect(listing)}>
                 <img src={listing.image} alt="" loading="lazy" />
                 <span>
                   <strong>{listing.address}</strong>
