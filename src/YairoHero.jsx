@@ -1671,6 +1671,8 @@ function SearchModeSection({
           <LuxuryField
             key={field.label}
             field={field}
+            modeKey={modeKey}
+            contextValues={values}
             value={values[field.label]}
             isOpen={openField === field.label}
             onOpen={() => onOpenField(openField === field.label ? null : field.label)}
@@ -1745,7 +1747,113 @@ function SearchModeSection({
   );
 }
 
-function LuxuryField({ field, value, isOpen, onOpen, onChange }) {
+function AddressSearchField({ value, onChange, modeKey = "buy", contextValues = {}, variant = "inline" }) {
+  const [query, setQuery] = useState(value || "");
+  const [suggestions, setSuggestions] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const trimmedQuery = query.trim();
+
+  useEffect(() => {
+    setQuery(value || "");
+  }, [value]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    if (trimmedQuery.length < 3) {
+      setSuggestions([]);
+      setLoading(false);
+      return () => {
+        mounted = false;
+      };
+    }
+
+    setLoading(true);
+    const timer = window.setTimeout(() => {
+      const params = new URLSearchParams({
+        mode: modeKey,
+        address: trimmedQuery,
+        limit: "5",
+      });
+      const range = modeKey === "rent" ? contextValues["Monthly Budget"] || contextValues["Price Range"] : contextValues["Price Range"];
+
+      if (Array.isArray(range)) {
+        params.set("minPrice", String(Math.round(range[0])));
+        params.set("maxPrice", String(Math.round(range[1])));
+      } else {
+        params.set("minPrice", modeKey === "rent" ? "1000" : "600000");
+        params.set("maxPrice", modeKey === "rent" ? "45000" : "25000000");
+      }
+
+      if (contextValues["City / Area"] && !["All Florida", "All South Florida"].includes(contextValues["City / Area"])) {
+        params.set("city", contextValues["City / Area"]);
+      }
+
+      loadFilteredPlatformListings(params.toString())
+        .then((incoming) => {
+          if (!mounted) return;
+          setSuggestions(incoming.slice(0, 5).map(normalizeCardListing));
+        })
+        .catch(() => {
+          if (mounted) setSuggestions([]);
+        })
+        .finally(() => {
+          if (mounted) setLoading(false);
+        });
+    }, 260);
+
+    return () => {
+      mounted = false;
+      window.clearTimeout(timer);
+    };
+  }, [trimmedQuery, modeKey, contextValues]);
+
+  const handleChange = (nextValue) => {
+    setQuery(nextValue);
+    onChange(nextValue);
+  };
+
+  const handleSelect = (listing) => {
+    handleChange(listing.address);
+    setSuggestions([]);
+  };
+
+  return (
+    <div className={variant === "listing" ? "listing-address-search has-suggestions" : "luxury-field input-field address-autocomplete"}>
+      <span>Address Search</span>
+      <input
+        type="search"
+        value={query}
+        placeholder="Search by street, building, or address"
+        onChange={(event) => handleChange(event.target.value)}
+      />
+      <AnimatePresence>
+        {trimmedQuery.length >= 3 && (loading || suggestions.length > 0) && (
+          <motion.div
+            className="address-suggestions"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+          >
+            {loading && !suggestions.length && <p>Searching residences...</p>}
+            {suggestions.map((listing) => (
+              <button key={listing.id} type="button" onClick={() => handleSelect(listing)}>
+                <img src={listing.image} alt="" loading="lazy" />
+                <span>
+                  <strong>{listing.address}</strong>
+                  <em>{listing.price} / {listing.location}</em>
+                </span>
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function LuxuryField({ field, value, isOpen, onOpen, onChange, modeKey = "buy", contextValues = {} }) {
   const hasOptions = Boolean(field.options);
   const [query, setQuery] = useState("");
   const isSearchable = Boolean(field.searchable);
@@ -1755,6 +1863,17 @@ function LuxuryField({ field, value, isOpen, onOpen, onChange }) {
   }, [isOpen]);
 
   if (!hasOptions) {
+    if (field.label === "Address Search") {
+      return (
+        <AddressSearchField
+          modeKey={modeKey}
+          contextValues={contextValues}
+          value={value}
+          onChange={onChange}
+        />
+      );
+    }
+
     return (
       <label className="luxury-field input-field">
         <span>{field.label}</span>
@@ -2550,21 +2669,21 @@ function ListingsPageSection({ standalone = false }) {
           onChange={(value) => updateFilter("Price Range", value)}
         />
 
-        <label className="listing-address-search">
-          <span>Address Search</span>
-          <input
-            type="search"
-            value={filterValues["Address Search"] || ""}
-            placeholder="Search by street, building, or address"
-            onChange={(event) => updateFilter("Address Search", event.target.value)}
-          />
-        </label>
+        <AddressSearchField
+          modeKey={listingMode}
+          contextValues={filterValues}
+          value={filterValues["Address Search"]}
+          onChange={(value) => updateFilter("Address Search", value)}
+          variant="listing"
+        />
 
         <div className="listing-filter-grid">
           {listingFilters.map((field) => (
             <LuxuryField
               key={field.label}
               field={field}
+              modeKey={listingMode}
+              contextValues={filterValues}
               value={filterValues[field.label]}
               isOpen={openFilter === field.label}
               onOpen={() => setOpenFilter(openFilter === field.label ? null : field.label)}
