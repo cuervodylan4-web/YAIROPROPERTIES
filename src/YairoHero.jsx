@@ -196,6 +196,7 @@ const searchModes = {
     description: "Waterfront estates, architectural homes, and established neighborhoods.",
     action: "Search Residences",
     fields: [
+      { label: "Address Search", placeholder: "Street, building, or address" },
       CITY_FIELD,
       { label: "Property Type", options: ["Any", "Single Family Residence", "Condominium", "Townhouse", "Villa"] },
       { label: "Bedrooms", options: ["Any", "2+", "3+", "4+", "5+"] },
@@ -210,6 +211,7 @@ const searchModes = {
     description: "Furnished residences, waterfront leases, and seasonal homes.",
     action: "Search Leases",
     fields: [
+      { label: "Address Search", placeholder: "Street, building, or address" },
       CITY_FIELD,
       { label: "Property Type", options: ["Any", "Single Family Residence", "Condominium", "Townhouse", "Villa"] },
       { label: "Bedrooms", options: ["Any", "1+", "2+", "3+", "4+"] },
