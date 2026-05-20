@@ -93,7 +93,10 @@ export async function fetchSparkResoListings({
     })
   );
 
-  return dedupeListings(listings).slice(0, Number(limit) || 48);
+  const dedupedListings = dedupeListings(listings);
+  const rankedListings = address ? rankListingsByAddress(dedupedListings, address) : dedupedListings;
+
+  return rankedListings.slice(0, Number(limit) || 48);
 }
 
 export async function fetchSparkResoListingBySlug(slug) {
@@ -217,14 +220,44 @@ function buildAddressFilter(address) {
     .filter((word) => word.length >= 3 && !ADDRESS_STOP_WORDS.has(word))
     .slice(0, 4);
 
-  if (number && streetWords.length) {
-    return `StreetNumber eq '${escapeODataString(number)}' and contains(tolower(StreetName), '${escapeODataString(streetWords[0])}')`;
-  }
-
   if (number) return `StreetNumber eq '${escapeODataString(number)}'`;
   if (streetWords.length) return `contains(tolower(StreetName), '${escapeODataString(streetWords[0])}')`;
 
   return `contains(tolower(UnparsedAddress), '${escapeODataString(normalized)}')`;
+}
+
+function rankListingsByAddress(listings, address) {
+  const query = normalizeAddressSearch(address);
+  const number = query.match(/^(\d{2,})\b/)?.[1] || "";
+  const terms = query
+    .replace(/^(\d{2,})\b/, "")
+    .split(" ")
+    .filter((term) => term.length >= 3 && !ADDRESS_STOP_WORDS.has(term));
+
+  return listings
+    .map((listing, index) => {
+      const searchableAddress = normalizeAddressSearch([listing.address, listing.streetAddress, listing.city, listing.neighborhood].join(" "));
+      let score = 0;
+
+      if (query && searchableAddress.includes(query)) score += 1000;
+      if (number && searchableAddress.startsWith(number)) score += 250;
+      if (number && searchableAddress.includes(number)) score += 100;
+      terms.forEach((term) => {
+        if (searchableAddress.includes(term)) score += 120;
+      });
+
+      return { listing, index, score };
+    })
+    .sort((a, b) => b.score - a.score || a.index - b.index)
+    .map((item) => item.listing);
+}
+
+function normalizeAddressSearch(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[#,.]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 const ADDRESS_STOP_WORDS = new Set([

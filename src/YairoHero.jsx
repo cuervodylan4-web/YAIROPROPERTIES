@@ -1790,7 +1790,7 @@ function AddressSearchField({ value, onChange, modeKey = "buy", contextValues = 
       loadFilteredPlatformListings(params.toString())
         .then((incoming) => {
           if (!mounted) return;
-          setSuggestions(incoming.slice(0, 8).map(normalizeCardListing));
+          setSuggestions(incoming.slice(0, 10).map(normalizeCardListing));
         })
         .catch(() => {
           if (mounted) setSuggestions([]);
