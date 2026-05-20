@@ -54,6 +54,11 @@ export async function fetchSparkResoListings({
       "ClosePrice",
       "CloseDate",
       "UnparsedAddress",
+      "StreetNumber",
+      "StreetDirPrefix",
+      "StreetName",
+      "StreetSuffix",
+      "UnitNumber",
       "City",
       "StateOrProvince",
       "PostalCode",
@@ -165,34 +170,107 @@ function buildLuxuryFilter({
     }
   }
 
-  if (city && city !== "All Florida" && city !== "All South Florida") {
+  if (city && !hasAddressSearch && city !== "All Florida" && city !== "All South Florida") {
     filters.push(`City eq '${escapeODataString(city)}'`);
   }
 
-  if (address && String(address).trim().length >= 3) {
-    filters.push(`contains(tolower(UnparsedAddress), '${escapeODataString(String(address).trim().toLowerCase())}')`);
-  }
+  const addressFilter = buildAddressFilter(address);
+  if (addressFilter) filters.push(addressFilter);
 
-  if (neighborhood && neighborhood !== "Any") {
-    filters.push(`SubdivisionName eq '${escapeODataString(neighborhood)}'`);
-  }
+  if (!hasAddressSearch) {
+    if (neighborhood && neighborhood !== "Any") {
+      filters.push(`SubdivisionName eq '${escapeODataString(neighborhood)}'`);
+    }
 
-  if (propertyType && propertyType !== "Any") {
-    filters.push(`PropertySubType eq '${escapeODataString(propertyType)}'`);
-  } else if (mode === "rent") {
-    filters.push(`PropertyType eq 'Residential Lease'`);
-  } else {
-    filters.push(`PropertyType eq 'Residential'`);
-  }
+    if (propertyType && propertyType !== "Any") {
+      filters.push(`PropertySubType eq '${escapeODataString(propertyType)}'`);
+    } else if (mode === "rent") {
+      filters.push(`PropertyType eq 'Residential Lease'`);
+    } else {
+      filters.push(`PropertyType eq 'Residential'`);
+    }
 
-  if (Number(beds)) filters.push(`BedroomsTotal ge ${Number(beds)}`);
-  if (Number(baths)) filters.push(`BathroomsTotalDecimal ge ${Number(baths)}`);
-  if (Number(sqft)) filters.push(`LivingArea ge ${Number(sqft)}`);
-  if (waterfront === true || waterfront === "true") filters.push("WaterfrontYN eq true");
-  if (newConstruction === true || newConstruction === "true") filters.push(`YearBuilt ge ${new Date().getFullYear() - 3}`);
+    if (Number(beds)) filters.push(`BedroomsTotal ge ${Number(beds)}`);
+    if (Number(baths)) filters.push(`BathroomsTotalDecimal ge ${Number(baths)}`);
+    if (Number(sqft)) filters.push(`LivingArea ge ${Number(sqft)}`);
+    if (waterfront === true || waterfront === "true") filters.push("WaterfrontYN eq true");
+    if (newConstruction === true || newConstruction === "true") filters.push(`YearBuilt ge ${new Date().getFullYear() - 3}`);
+  }
 
   return filters.join(" and ");
 }
+
+function buildAddressFilter(address) {
+  const raw = String(address || "").trim();
+  if (raw.length < 3) return "";
+
+  const normalized = raw
+    .toLowerCase()
+    .replace(/[#,.]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const number = normalized.match(/^(\d{2,})\b/)?.[1] || "";
+  const streetWords = normalized
+    .replace(/^(\d{2,})\b/, "")
+    .split(" ")
+    .map((word) => word.trim())
+    .filter((word) => word.length >= 3 && !ADDRESS_STOP_WORDS.has(word))
+    .slice(0, 4);
+  const clauses = [`contains(tolower(UnparsedAddress), '${escapeODataString(normalized)}')`];
+
+  if (number && streetWords.length) {
+    clauses.push(
+      `(StreetNumber eq '${escapeODataString(number)}' and ${streetWords
+        .map((word) => `contains(tolower(StreetName), '${escapeODataString(word)}')`)
+        .join(" and ")})`
+    );
+  } else if (number) {
+    clauses.push(`StreetNumber eq '${escapeODataString(number)}'`);
+  } else if (streetWords.length) {
+    clauses.push(`(${streetWords.map((word) => `contains(tolower(StreetName), '${escapeODataString(word)}')`).join(" and ")})`);
+  }
+
+  return `(${clauses.join(" or ")})`;
+}
+
+const ADDRESS_STOP_WORDS = new Set([
+  "street",
+  "st",
+  "avenue",
+  "ave",
+  "road",
+  "rd",
+  "drive",
+  "dr",
+  "court",
+  "ct",
+  "circle",
+  "cir",
+  "way",
+  "lane",
+  "ln",
+  "place",
+  "pl",
+  "boulevard",
+  "blvd",
+  "terrace",
+  "ter",
+  "north",
+  "south",
+  "east",
+  "west",
+  "n",
+  "s",
+  "e",
+  "w",
+  "ne",
+  "nw",
+  "se",
+  "sw",
+  "unit",
+  "apt",
+  "suite",
+]);
 
 function escapeODataString(value) {
   return String(value).replace(/'/g, "''");
