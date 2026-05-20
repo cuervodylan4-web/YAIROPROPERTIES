@@ -21,9 +21,11 @@ export async function fetchSparkResoListings({
 } = {}) {
   const token = process.env.SPARK_ACCESS_TOKEN;
   if (!token) return [];
+  const requestedLimit = Number(limit) || 48;
+  const hasAddressSearch = Boolean(address && String(address).trim().length >= 3);
 
   const params = new URLSearchParams();
-  params.set("$top", String(Math.min(Number(limit) || 48, 60)));
+  params.set("$top", String(hasAddressSearch ? 60 : Math.min(requestedLimit, 60)));
   params.set("$orderby", "ModificationTimestamp desc");
   params.set(
     "$filter",
@@ -96,7 +98,7 @@ export async function fetchSparkResoListings({
   const dedupedListings = dedupeListings(listings);
   const rankedListings = address ? rankListingsByAddress(dedupedListings, address) : dedupedListings;
 
-  return rankedListings.slice(0, Number(limit) || 48);
+  return rankedListings.slice(0, requestedLimit);
 }
 
 export async function fetchSparkResoListingBySlug(slug) {
