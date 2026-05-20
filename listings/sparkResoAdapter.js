@@ -216,21 +216,15 @@ function buildAddressFilter(address) {
     .map((word) => word.trim())
     .filter((word) => word.length >= 3 && !ADDRESS_STOP_WORDS.has(word))
     .slice(0, 4);
-  const clauses = [`contains(tolower(UnparsedAddress), '${escapeODataString(normalized)}')`];
 
   if (number && streetWords.length) {
-    clauses.push(
-      `(StreetNumber eq '${escapeODataString(number)}' and ${streetWords
-        .map((word) => `contains(tolower(StreetName), '${escapeODataString(word)}')`)
-        .join(" and ")})`
-    );
-  } else if (number) {
-    clauses.push(`StreetNumber eq '${escapeODataString(number)}'`);
-  } else if (streetWords.length) {
-    clauses.push(`(${streetWords.map((word) => `contains(tolower(StreetName), '${escapeODataString(word)}')`).join(" and ")})`);
+    return `StreetNumber eq '${escapeODataString(number)}' and contains(tolower(StreetName), '${escapeODataString(streetWords[0])}')`;
   }
 
-  return `(${clauses.join(" or ")})`;
+  if (number) return `StreetNumber eq '${escapeODataString(number)}'`;
+  if (streetWords.length) return `contains(tolower(StreetName), '${escapeODataString(streetWords[0])}')`;
+
+  return `contains(tolower(UnparsedAddress), '${escapeODataString(normalized)}')`;
 }
 
 const ADDRESS_STOP_WORDS = new Set([
