@@ -9,6 +9,7 @@ export async function fetchSparkResoListings({
   city,
   address,
   status,
+  daysOnMarket,
   neighborhood,
   propertyType,
   beds,
@@ -35,6 +36,7 @@ export async function fetchSparkResoListings({
       city,
       address,
       status,
+      daysOnMarket,
       neighborhood,
       propertyType,
       beds,
@@ -55,6 +57,8 @@ export async function fetchSparkResoListings({
       "ListPrice",
       "ClosePrice",
       "CloseDate",
+      "DaysOnMarket",
+      "OnMarketDate",
       "UnparsedAddress",
       "StreetNumber",
       "StreetDirPrefix",
@@ -145,6 +149,7 @@ function buildLuxuryFilter({
   city,
   address,
   status,
+  daysOnMarket,
   neighborhood,
   propertyType,
   beds,
@@ -157,12 +162,15 @@ function buildLuxuryFilter({
   const filters = ["(StateOrProvince eq 'FL' or StateOrProvince eq 'Florida')"];
   const hasAddressSearch = Boolean(address && String(address).trim().length >= 3);
   const statusFilter = hasAddressSearch ? "all" : normalizeStatusFilter(status);
-  const priceField = statusFilter === "sold" ? "ClosePrice" : "ListPrice";
+  const priceField = statusFilter === "closed" ? "ClosePrice" : "ListPrice";
 
   if (statusFilter === "active") {
     filters.push("StandardStatus eq 'Active'");
-  } else if (statusFilter === "sold") {
+  } else if (statusFilter === "closed") {
     filters.push("(StandardStatus eq 'Closed' or StandardStatus eq 'Sold' or MlsStatus eq 'Sold' or MlsStatus eq 'Closed')");
+  } else if (statusFilter !== "all") {
+    const label = formatStatusFilterLabel(statusFilter);
+    filters.push(`(StandardStatus eq '${escapeODataString(label)}' or MlsStatus eq '${escapeODataString(label)}')`);
   }
 
   if (!hasAddressSearch) {
@@ -198,6 +206,8 @@ function buildLuxuryFilter({
     if (Number(beds)) filters.push(`BedroomsTotal ge ${Number(beds)}`);
     if (Number(baths)) filters.push(`BathroomsTotalDecimal ge ${Number(baths)}`);
     if (Number(sqft)) filters.push(`LivingArea ge ${Number(sqft)}`);
+    const daysFilter = buildDaysOnMarketFilter(daysOnMarket);
+    if (daysFilter) filters.push(daysFilter);
     if (waterfront === true || waterfront === "true") filters.push("WaterfrontYN eq true");
     if (newConstruction === true || newConstruction === "true") filters.push(`YearBuilt ge ${new Date().getFullYear() - 3}`);
   }
@@ -222,6 +232,9 @@ function buildAddressFilter(address) {
     .filter((word) => word.length >= 3 && !ADDRESS_STOP_WORDS.has(word))
     .slice(0, 4);
 
+  if (number && streetWords.length) {
+    return `(StreetNumber eq '${escapeODataString(number)}' and contains(tolower(StreetName), '${escapeODataString(streetWords[0])}'))`;
+  }
   if (number) return `StreetNumber eq '${escapeODataString(number)}'`;
   if (streetWords.length) return `contains(tolower(StreetName), '${escapeODataString(streetWords[0])}')`;
 
@@ -307,9 +320,28 @@ function escapeODataString(value) {
 
 function normalizeStatusFilter(status) {
   const value = String(status || "Active").toLowerCase();
-  if (value === "sold" || value === "closed") return "sold";
+  if (value === "sold" || value === "closed") return "closed";
+  if (value === "active under contract") return "active-under-contract";
+  if (value === "pending") return "pending";
+  if (value === "expired") return "expired";
   if (value === "all status" || value === "all" || value === "any") return "all";
   return "active";
+}
+
+function formatStatusFilterLabel(status) {
+  if (status === "active-under-contract") return "Active Under Contract";
+  if (status === "pending") return "Pending";
+  if (status === "expired") return "Expired";
+  return "Active";
+}
+
+function buildDaysOnMarketFilter(value) {
+  const normalized = String(value || "").trim();
+  if (!normalized || normalized === "Any") return "";
+  if (normalized === "90+" || normalized.toLowerCase().includes("90+")) return "DaysOnMarket ge 90";
+  const days = Number(normalized.replace(/[^\d.]/g, ""));
+  if (!days) return "";
+  return `DaysOnMarket le ${days}`;
 }
 
 function dedupeListings(listings) {

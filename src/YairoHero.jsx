@@ -116,6 +116,8 @@ const CITY_FIELD = {
   searchable: true,
   placeholder: "Type a Florida city",
 };
+const LISTING_STATUS_OPTIONS = ["Active", "Active Under Contract", "Pending", "Closed", "Expired", "All Status"];
+const DAYS_ON_MARKET_OPTIONS = ["Any", "7 Days or Less", "14 Days or Less", "30 Days or Less", "60 Days or Less", "90+ Days"];
 
 const serviceAreas = [
   "Parkland",
@@ -198,7 +200,8 @@ const searchModes = {
     fields: [
       { label: "Address Search", placeholder: "Street, building, or address" },
       CITY_FIELD,
-      { label: "Listing Status", options: ["Active", "Sold", "All Status"] },
+      { label: "Listing Status", options: LISTING_STATUS_OPTIONS },
+      { label: "Days on Market", options: DAYS_ON_MARKET_OPTIONS },
       { label: "Property Type", options: ["Any", "Single Family Residence", "Condominium", "Townhouse", "Villa"] },
       { label: "Bedrooms", options: ["Any", "2+", "3+", "4+", "5+"] },
       { label: "Bathrooms", options: ["Any", "2+", "3+", "4+", "5+"] },
@@ -214,7 +217,8 @@ const searchModes = {
     fields: [
       { label: "Address Search", placeholder: "Street, building, or address" },
       CITY_FIELD,
-      { label: "Listing Status", options: ["Active", "Sold", "All Status"] },
+      { label: "Listing Status", options: LISTING_STATUS_OPTIONS },
+      { label: "Days on Market", options: DAYS_ON_MARKET_OPTIONS },
       { label: "Property Type", options: ["Any", "Single Family Residence", "Condominium", "Townhouse", "Villa"] },
       { label: "Bedrooms", options: ["Any", "1+", "2+", "3+", "4+"] },
       { label: "Bathrooms", options: ["Any", "1+", "2+", "3+", "4+"] },
@@ -297,7 +301,8 @@ const featuredProperties = [
 
 const listingFilters = [
   { ...CITY_FIELD, param: "city" },
-  { label: "Listing Status", param: "status", options: ["Active", "Sold", "All Status"] },
+  { label: "Listing Status", param: "status", options: LISTING_STATUS_OPTIONS },
+  { label: "Days on Market", param: "daysOnMarket", options: DAYS_ON_MARKET_OPTIONS },
   { label: "Property Type", param: "propertyType", options: ["Any", "Single Family Residence", "Condominium", "Townhouse", "Villa"] },
   { label: "Beds", param: "beds", options: ["Any", "2+", "3+", "4+", "5+"] },
   { label: "Baths", param: "baths", options: ["Any", "2+", "3+", "4+", "5+"] },
@@ -442,6 +447,22 @@ function parseFilterNumber(value) {
   return String(value).replace(/[^\d.]/g, "");
 }
 
+function parseDaysOnMarketValue(value) {
+  if (!value || value === "Any") return "";
+  if (String(value).includes("90+")) return "90+";
+  return parseFilterNumber(value);
+}
+
+function formatDaysOnMarketValue(value) {
+  const normalized = String(value || "");
+  if (normalized === "90+") return "90+ Days";
+  if (normalized === "7") return "7 Days or Less";
+  if (normalized === "14") return "14 Days or Less";
+  if (normalized === "30") return "30 Days or Less";
+  if (normalized === "60") return "60 Days or Less";
+  return "Any";
+}
+
 function listingParamsFromValues(values, modeKey = "buy", limit = 48) {
   const params = new URLSearchParams({
     mode: modeKey,
@@ -460,6 +481,7 @@ function listingParamsFromValues(values, modeKey = "buy", limit = 48) {
     "City / Area": "city",
     "Address Search": "address",
     "Listing Status": "status",
+    "Days on Market": "daysOnMarket",
     "Property Type": "propertyType",
     Bedrooms: "beds",
     Beds: "beds",
@@ -473,6 +495,10 @@ function listingParamsFromValues(values, modeKey = "buy", limit = 48) {
     if (!value || value === "Any" || value === "All Florida" || value === "All South Florida") return;
     if (["beds", "baths", "sqft"].includes(param)) {
       params.set(param, parseFilterNumber(value));
+      return;
+    }
+    if (param === "daysOnMarket") {
+      params.set(param, parseDaysOnMarketValue(value));
       return;
     }
     params.set(param, value);
@@ -507,10 +533,12 @@ function getInitialListingState() {
   const beds = params.get("beds");
   const baths = params.get("baths");
   const sqft = params.get("sqft");
+  const daysOnMarket = params.get("daysOnMarket");
 
   if (city) values["City / Area"] = city;
   if (params.get("address")) values["Address Search"] = params.get("address");
   if (params.get("status")) values["Listing Status"] = params.get("status");
+  if (daysOnMarket) values["Days on Market"] = formatDaysOnMarketValue(daysOnMarket);
   if (propertyType) values["Property Type"] = propertyType;
   if (beds) values.Beds = `${beds}+`;
   if (baths) values.Baths = `${baths}+`;
@@ -1816,6 +1844,9 @@ function AddressSearchField({ value, onChange, modeKey = "buy", contextValues = 
     handleChange(listing.address);
     setSuggestions([]);
     setIsFocused(false);
+    if (typeof window !== "undefined") {
+      window.location.assign(`/property/${listing.listingKey || listing.id}`);
+    }
   };
   const showSuggestions = isFocused && trimmedQuery.length >= 3 && (loading || suggestions.length > 0);
 

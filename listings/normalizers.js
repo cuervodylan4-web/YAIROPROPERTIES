@@ -1,6 +1,6 @@
 export function normalizeListing(record, context = {}) {
   const status = formatStatus(record.StandardStatus || record.MlsStatus || record.status || "Active");
-  const isSold = status === "Sold";
+  const isSold = status === "Closed" || status === "Sold";
   const price = Number((isSold && record.ClosePrice) || record.ListPrice || record.CurrentPrice || record.price || record.listPrice || 0);
   const rawMedia = record.Media || record.media || record.images || [];
   const media = normalizeMedia(rawMedia);
@@ -45,6 +45,7 @@ export function normalizeListing(record, context = {}) {
     sqft,
     displaySqft: sqft ? `${new Intl.NumberFormat("en-US").format(sqft)} SF` : "Available by request",
     waterfront: Boolean(record.WaterfrontYN || record.waterfront),
+    daysOnMarket: Number(record.DaysOnMarket || 0),
     yearBuilt: record.YearBuilt || null,
     hoa: record.AssociationFee ? formatAssociationFee(record.AssociationFee, record.AssociationFeeFrequency) : "Available by request",
     architecturalStyle: architecture,
@@ -78,6 +79,7 @@ export function normalizeListing(record, context = {}) {
     ],
     intelligence: [
       ["Market Status", status, "Live MLS positioning through Spark RESO data."],
+      ["Days on Market", record.DaysOnMarket ? `${record.DaysOnMarket} Days` : "Available by request", "Timing context from Spark RESO market data."],
       ["Property Type", propertyType || "Residential", "Reviewed through location, condition, and long-term fit."],
       ["Waterfront", record.WaterfrontYN ? "Yes" : "Verify", "Water orientation and access should be confirmed during advisory."],
       ["MLS Reference", record.ListingId || listingKey || "Available", "Source record connected through SparkPlatform RESO Web API."],
@@ -141,7 +143,6 @@ function formatStatus(status) {
   const formatted = String(status || "Active")
     .replace(/([a-z])([A-Z])/g, "$1 $2")
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
-  if (formatted === "Closed") return "Sold";
   return formatted;
 }
 

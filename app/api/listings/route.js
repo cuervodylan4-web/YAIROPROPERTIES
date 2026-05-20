@@ -17,6 +17,7 @@ export async function GET(request) {
     status: searchParams.get("status") || undefined,
     neighborhood: searchParams.get("neighborhood") || undefined,
     propertyType: searchParams.get("propertyType") || undefined,
+    daysOnMarket: searchParams.get("daysOnMarket") || undefined,
     beds: Number(searchParams.get("beds") || 0),
     baths: Number(searchParams.get("baths") || 0),
     sqft: Number(searchParams.get("sqft") || 0),
