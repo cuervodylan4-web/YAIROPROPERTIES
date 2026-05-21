@@ -26,7 +26,7 @@ export async function fetchSparkResoListings({
   const hasAddressSearch = Boolean(address && String(address).trim().length >= 3);
 
   const params = new URLSearchParams();
-  params.set("$top", String(hasAddressSearch ? 60 : Math.min(requestedLimit, 60)));
+  params.set("$top", String(hasAddressSearch ? 200 : Math.min(requestedLimit, 60)));
   params.set("$orderby", "ModificationTimestamp desc");
   params.set(
     "$filter",
@@ -233,10 +233,14 @@ function buildAddressFilter(address) {
     .slice(0, 4);
 
   if (number && streetWords.length) {
-    return `(StreetNumber eq '${escapeODataString(number)}' and contains(tolower(StreetName), '${escapeODataString(streetWords[0])}'))`;
+    const primaryWord = escapeODataString(streetWords[0]);
+    return `(StreetNumber eq '${escapeODataString(number)}' and (contains(tolower(StreetName), '${primaryWord}') or contains(tolower(UnparsedAddress), '${primaryWord}')))`;
   }
   if (number) return `StreetNumber eq '${escapeODataString(number)}'`;
-  if (streetWords.length) return `contains(tolower(StreetName), '${escapeODataString(streetWords[0])}')`;
+  if (streetWords.length) {
+    const primaryWord = escapeODataString(streetWords[0]);
+    return `(contains(tolower(StreetName), '${primaryWord}') or contains(tolower(UnparsedAddress), '${primaryWord}'))`;
+  }
 
   return `contains(tolower(UnparsedAddress), '${escapeODataString(normalized)}')`;
 }
