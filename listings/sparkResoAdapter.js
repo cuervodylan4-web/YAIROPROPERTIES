@@ -234,9 +234,13 @@ function buildAddressFilter(address) {
 
   if (number && streetWords.length) {
     const primaryWord = escapeODataString(streetWords[0]);
-    return `(StreetNumber eq '${escapeODataString(number)}' and (contains(tolower(StreetName), '${primaryWord}') or contains(tolower(UnparsedAddress), '${primaryWord}')))`;
+    const numericWord = escapeODataString(number);
+    return `((StreetNumber eq '${numericWord}' or UnitNumber eq '${numericWord}' or contains(tolower(UnparsedAddress), '${numericWord}')) and (contains(tolower(StreetName), '${primaryWord}') or contains(tolower(UnparsedAddress), '${primaryWord}')))`;
   }
-  if (number) return `StreetNumber eq '${escapeODataString(number)}'`;
+  if (number) {
+    const numericWord = escapeODataString(number);
+    return `(StreetNumber eq '${numericWord}' or UnitNumber eq '${numericWord}' or contains(tolower(UnparsedAddress), '${numericWord}'))`;
+  }
   if (streetWords.length) {
     const primaryWord = escapeODataString(streetWords[0]);
     return `(contains(tolower(StreetName), '${primaryWord}') or contains(tolower(UnparsedAddress), '${primaryWord}'))`;
