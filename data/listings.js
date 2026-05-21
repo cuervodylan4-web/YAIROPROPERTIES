@@ -52,7 +52,7 @@ export const supplementalListings = [
     id: "1054-coral-club-1054-coral-springs-fl-33071",
     slug: "1054-coral-club-1054-coral-springs-fl-33071",
     listingKey: "1054-coral-club-1054-coral-springs-fl-33071",
-    mlsId: "SUP-CORAL-1054",
+    mlsId: "A11411592",
     source: "supplemental",
     sourceUrl: "https://www.zillow.com/homedetails/1054-Coral-Club-Dr-1054-Coral-Springs-FL-33071/66124285_zpid/",
     status: "Closed",
@@ -103,7 +103,7 @@ export const supplementalListings = [
       ["Property Type", "Condominium", "Two bedrooms, two bathrooms, and 1,044 square feet."],
       ["Year Built", "1988", "Condominium community context should be reviewed with HOA documents."],
       ["HOA", "$427 / monthly", "Monthly association cost shown for advisory review."],
-      ["MLS Reference", "SUP-CORAL-1054", "Record retained for direct property search and advisory review."],
+      ["MLS Reference", "A11411592", "MiamiMLS reference retained for direct property search and advisory review."],
     ],
   },
 ];

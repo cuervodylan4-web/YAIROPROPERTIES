@@ -218,6 +218,10 @@ function buildLuxuryFilter({
 function buildAddressFilter(address) {
   const raw = String(address || "").trim();
   if (raw.length < 3) return "";
+  const mlsId = normalizeMlsLookup(raw);
+  if (mlsId) {
+    return `(tolower(ListingId) eq '${escapeODataString(mlsId.toLowerCase())}' or contains(tolower(ListingId), '${escapeODataString(mlsId.toLowerCase())}'))`;
+  }
 
   const normalized = raw
     .toLowerCase()
@@ -247,6 +251,15 @@ function buildAddressFilter(address) {
   }
 
   return `contains(tolower(UnparsedAddress), '${escapeODataString(normalized)}')`;
+}
+
+function normalizeMlsLookup(value) {
+  const compact = String(value || "")
+    .trim()
+    .replace(/[^a-z0-9]/gi, "");
+  if (/^[a-z]{1,4}\d{5,}$/i.test(compact)) return compact;
+  if (/^\d{5,}$/.test(compact)) return compact;
+  return "";
 }
 
 function rankListingsByAddress(listings, address) {
