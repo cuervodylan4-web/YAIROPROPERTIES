@@ -31,6 +31,7 @@ const RENT_STOPS = [
   { pos: 100, value: 45000 },
 ];
 const FALLBACK_PROPERTY_IMAGE = "/videos/optimized/miami-hero-02-poster.jpg";
+const JOURNAL_STORAGE_KEY = "yairoJournalArticles";
 const FLORIDA_CITY_OPTIONS = [
   "All Florida",
   "Aventura",
@@ -1169,6 +1170,18 @@ export function JournalPage() {
       <PrimaryNav tone="light" />
       <LeadCapturePopup />
       <JournalExperience />
+      <SiteFooter />
+    </main>
+  );
+}
+
+export function JournalEditorPage() {
+  return (
+    <main className="site-shell journal-editor-site">
+      <CustomCursor />
+      <FloatingWhatsApp />
+      <PrimaryNav tone="light" />
+      <JournalEditorExperience />
       <SiteFooter />
     </main>
   );
@@ -2948,9 +2961,23 @@ function NeighborhoodIcon({ type }) {
 }
 
 function JournalExperience() {
-  const featuredArticle = journalArticles.find((article) => article.featured) || journalArticles[0];
-  const feedArticles = journalArticles.filter((article) => article !== featuredArticle);
+  const [customArticles, setCustomArticles] = useState([]);
   const [expandedArticles, setExpandedArticles] = useState({});
+  const articles = useMemo(() => mergeJournalArticles(customArticles), [customArticles]);
+  const featuredArticle = articles.find((article) => article.featured) || articles[0];
+  const feedArticles = articles.filter((article) => article !== featuredArticle);
+
+  useEffect(() => {
+    const syncArticles = () => setCustomArticles(readStoredJournalArticles());
+    syncArticles();
+    window.addEventListener("storage", syncArticles);
+    window.addEventListener("yairo-journal-updated", syncArticles);
+    return () => {
+      window.removeEventListener("storage", syncArticles);
+      window.removeEventListener("yairo-journal-updated", syncArticles);
+    };
+  }, []);
+
   const toggleArticle = (title) => {
     setExpandedArticles((current) => ({
       ...current,
@@ -2968,7 +2995,7 @@ function JournalExperience() {
       >
         <JournalArticleImage article={featuredArticle} large />
         <div className="journal-feature-copy">
-          <span>{featuredArticle.category}</span>
+          <span>{formatJournalMeta(featuredArticle)}</span>
           <h1>{featuredArticle.title}</h1>
           <p>{featuredArticle.description}</p>
           <button
@@ -3013,7 +3040,7 @@ function JournalExperience() {
           >
             <JournalArticleImage article={article} />
             <div>
-              <span>{article.category}</span>
+              <span>{formatJournalMeta(article)}</span>
               <h2>{article.title}</h2>
               <p>{article.description}</p>
               <button
@@ -3044,6 +3071,200 @@ function JournalExperience() {
       </div>
     </section>
   );
+}
+
+function JournalEditorExperience() {
+  const [articles, setArticles] = useState([]);
+  const [form, setForm] = useState({
+    title: "",
+    date: new Date().toISOString().slice(0, 10),
+    category: "Market Notes",
+    description: "",
+    body: "",
+    image: "",
+  });
+  const [imageName, setImageName] = useState("");
+
+  useEffect(() => {
+    setArticles(readStoredJournalArticles());
+  }, []);
+
+  const updateField = (field, value) => {
+    setForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const handleImage = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setImageName(file.name);
+    const reader = new FileReader();
+    reader.onload = () => updateField("image", String(reader.result || ""));
+    reader.readAsDataURL(file);
+  };
+
+  const saveArticle = (event) => {
+    event.preventDefault();
+    const title = form.title.trim();
+    const body = form.body.trim();
+    if (!title || !body) return;
+
+    const article = {
+      id: `${Date.now()}-${slugifySeo(title)}`,
+      title,
+      date: form.date,
+      category: form.category.trim() || "Journal",
+      image: form.image || "/videos/optimized/miami-hero-02-poster.jpg",
+      description: form.description.trim() || body.slice(0, 180),
+      body: body
+        .split(/\n{2,}/)
+        .map((paragraph) => paragraph.trim())
+        .filter(Boolean),
+      custom: true,
+    };
+    const nextArticles = [article, ...articles].slice(0, 24);
+    writeStoredJournalArticles(nextArticles);
+    setArticles(nextArticles);
+    setForm({
+      title: "",
+      date: new Date().toISOString().slice(0, 10),
+      category: "Market Notes",
+      description: "",
+      body: "",
+      image: "",
+    });
+    setImageName("");
+  };
+
+  const deleteArticle = (id) => {
+    const nextArticles = articles.filter((article) => article.id !== id);
+    writeStoredJournalArticles(nextArticles);
+    setArticles(nextArticles);
+  };
+
+  return (
+    <section className="journal-editor" aria-label="Internal journal editor">
+      <div className="journal-editor-heading">
+        <span>Internal Journal Tool</span>
+        <h1>Publish a Journal Entry</h1>
+        <p>
+          Add a photo, title, date, and editorial body. Saved entries appear automatically on the Journal page in this browser.
+        </p>
+      </div>
+
+      <form className="journal-editor-form" onSubmit={saveArticle}>
+        <label className="journal-photo-loader">
+          <input type="file" accept="image/*" onChange={handleImage} />
+          {form.image ? (
+            <img src={form.image} alt="Selected journal upload preview" />
+          ) : (
+            <span>Upload Photo</span>
+          )}
+          <small>{imageName || "JPG, PNG, or WebP"}</small>
+        </label>
+
+        <div className="journal-editor-fields">
+          <label>
+            <span>Title</span>
+            <input
+              value={form.title}
+              onChange={(event) => updateField("title", event.target.value)}
+              placeholder="Waterfront Living in South Florida"
+              required
+            />
+          </label>
+          <div className="journal-editor-row">
+            <label>
+              <span>Date</span>
+              <input
+                type="date"
+                value={form.date}
+                onChange={(event) => updateField("date", event.target.value)}
+              />
+            </label>
+            <label>
+              <span>Category</span>
+              <input
+                value={form.category}
+                onChange={(event) => updateField("category", event.target.value)}
+                placeholder="Market Notes"
+              />
+            </label>
+          </div>
+          <label>
+            <span>Short Description</span>
+            <textarea
+              value={form.description}
+              onChange={(event) => updateField("description", event.target.value)}
+              placeholder="A concise teaser for the Journal page."
+              rows={3}
+            />
+          </label>
+          <label>
+            <span>Full Body</span>
+            <textarea
+              value={form.body}
+              onChange={(event) => updateField("body", event.target.value)}
+              placeholder={"Write the full article here. Use a blank line between paragraphs."}
+              rows={10}
+              required
+            />
+          </label>
+          <button type="submit">Publish to Journal</button>
+        </div>
+      </form>
+
+      <div className="journal-editor-list">
+        <span>Saved Entries</span>
+        {articles.length ? (
+          articles.map((article) => (
+            <article key={article.id}>
+              <img src={article.image} alt={`${article.title} journal thumbnail`} />
+              <div>
+                <strong>{article.title}</strong>
+                <small>{formatJournalDate(article.date)} / {article.category}</small>
+              </div>
+              <button type="button" onClick={() => deleteArticle(article.id)}>Delete</button>
+            </article>
+          ))
+        ) : (
+          <p>No internal journal entries yet.</p>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function readStoredJournalArticles() {
+  if (typeof window === "undefined") return [];
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(JOURNAL_STORAGE_KEY) || "[]");
+    return Array.isArray(parsed) ? parsed.filter((article) => article?.title && article?.body?.length) : [];
+  } catch (_error) {
+    return [];
+  }
+}
+
+function writeStoredJournalArticles(articles) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(JOURNAL_STORAGE_KEY, JSON.stringify(articles));
+  window.dispatchEvent(new Event("yairo-journal-updated"));
+}
+
+function mergeJournalArticles(customArticles) {
+  return [...customArticles, ...journalArticles];
+}
+
+function formatJournalDate(date) {
+  if (!date) return "Undated";
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date(date));
+}
+
+function formatJournalMeta(article) {
+  return [article.category, article.date ? formatJournalDate(article.date) : ""].filter(Boolean).join(" / ");
 }
 
 function JournalArticleImage({ article, large = false }) {
