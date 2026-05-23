@@ -10,6 +10,7 @@ import {
   useTransform,
 } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { SEO_CITY_PAGES, seoPropertyPath, slugifySeo, titleCaseFromSlug } from "../lib/seo.js";
 
 const VIDEO_DURATION_MS = 6200;
 const PHONE_NUMBER = "19548420980";
@@ -1134,14 +1135,14 @@ export function YairoHero() {
   );
 }
 
-export function ListingsPage() {
+export function ListingsPage({ initialCity = "", cityTitle = "", cityIntro = "" }) {
   return (
     <main className="site-shell listings-site">
       <CustomCursor />
       <FloatingWhatsApp />
       <PrimaryNav tone="light" />
       <LeadCapturePopup />
-      <ListingsPageSection standalone />
+      <ListingsPageSection standalone initialCity={initialCity} cityTitle={cityTitle} cityIntro={cityIntro} />
       <SiteFooter />
     </main>
   );
@@ -2570,10 +2571,16 @@ function CalculatorRange({ label, value, min, max, step, format, onChange }) {
   );
 }
 
-function ListingsPageSection({ standalone = false }) {
+function ListingsPageSection({ standalone = false, initialCity = "", cityTitle = "", cityIntro = "" }) {
   const reduceMotion = useReducedMotion();
   const sectionRef = useRef(null);
-  const initialListingState = useMemo(getInitialListingState, []);
+  const initialListingState = useMemo(() => {
+    const state = getInitialListingState();
+    if (initialCity) {
+      state.values["City / Area"] = initialCity;
+    }
+    return state;
+  }, [initialCity]);
   const [listingMode, setListingMode] = useState(initialListingState.mode);
   const [openFilter, setOpenFilter] = useState(null);
   const [filterValues, setFilterValues] = useState(initialListingState.values);
@@ -2650,9 +2657,9 @@ function ListingsPageSection({ standalone = false }) {
         </motion.div>
         <div className="listings-hero-copy">
           <span>Yairo Rincon / Miami Advisory</span>
-          <h2>Miami Residences</h2>
+          <h1>{cityTitle || "Luxury Listings in South Florida"}</h1>
           <p>
-            Curated access to waterfront estates, architectural homes, penthouses, and private opportunities across Miami.
+            {cityIntro || "Curated access to waterfront estates, architectural homes, condos, and private opportunities across South Florida."}
           </p>
           <div className="listings-hero-meta" aria-label="Market positioning">
             <span>Waterfront</span>
@@ -2736,6 +2743,13 @@ function ListingsPageSection({ standalone = false }) {
             />
           ))}
         </div>
+        <nav className="listing-area-links" aria-label="Browse listings by area">
+          {SEO_CITY_PAGES.slice(0, 8).map((citySlug) => (
+            <a key={citySlug} href={`/listings/${citySlug}`}>
+              {titleCaseFromSlug(citySlug)}
+            </a>
+          ))}
+        </nav>
       </motion.div>
 
       <div className="listings-split">
@@ -3069,7 +3083,7 @@ function ListingResultCard({ listing, index, isActive, onFocus }) {
           <span>{listing.sqft}</span>
         </div>
         <p>{listing.description}</p>
-        <MagneticAnchor className="listing-card-link" href={`/property/${listing.listingKey || listing.id}`} strength={0.16}>
+        <MagneticAnchor className="listing-card-link" href={seoPropertyPath(listing)} strength={0.16}>
           View Residence
         </MagneticAnchor>
       </div>
@@ -3091,11 +3105,11 @@ function PropertyDetailExperience({ property }) {
   return (
     <section className="property-detail" aria-label={`${property.title} property presentation`}>
       <motion.div ref={heroRef} className="property-detail-hero" style={{ opacity: reduceMotion ? 1 : heroOpacity }}>
-        <motion.img
-          src={property.gallery[0]}
-          alt={property.title}
-          style={{ y: reduceMotion ? 0 : heroY }}
-        />
+          <motion.img
+            src={property.gallery[0]}
+            alt={`${property.address || property.title} in ${property.city || "South Florida"} - property photo`}
+            style={{ y: reduceMotion ? 0 : heroY }}
+          />
         <div className="property-hero-shade" />
         <motion.div
           className="property-hero-content"
@@ -3138,8 +3152,8 @@ function PropertyDetailExperience({ property }) {
           viewport={{ once: true, margin: "-12% 0px" }}
           transition={{ duration: 0.86, ease: [0.16, 1, 0.3, 1] }}
         >
-          <span>Architectural Narrative</span>
-          <h2>Waterfront privacy, composed for Miami light.</h2>
+          <span>Property Overview</span>
+          <h2>Property Overview</h2>
           <p>{property.narrative}</p>
         </motion.div>
       </section>
@@ -3161,7 +3175,7 @@ function PropertyDetailExperience({ property }) {
           >
             <motion.img
               src={activeImage}
-              alt=""
+              alt={`${property.address || property.title} enlarged property photo`}
               initial={{ scale: 0.94 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0.96 }}
@@ -3180,7 +3194,7 @@ function PropertyImageGallery({ property, onOpen }) {
     <section className="property-gallery-section">
       <div className="property-section-heading">
         <span>Gallery</span>
-        <h2>Architecture, atmosphere, horizon.</h2>
+        <h2>Gallery</h2>
       </div>
       <div className="property-gallery">
         {property.gallery.map((image, index) => (
@@ -3194,7 +3208,7 @@ function PropertyImageGallery({ property, onOpen }) {
             viewport={{ once: true, margin: "-10% 0px" }}
             transition={{ duration: 0.72, delay: index * 0.06, ease: [0.16, 1, 0.3, 1] }}
           >
-            <img src={image} alt={`${property.title} gallery ${index + 1}`} loading="lazy" />
+            <img src={image} alt={`${property.address || property.title} in ${property.city || "South Florida"} - property photo ${index + 1}`} loading="lazy" />
           </motion.button>
         ))}
       </div>
@@ -3209,7 +3223,7 @@ function PropertyMap({ property }) {
     <section className="property-map-section">
       <div className="property-section-heading">
         <span>Waterfront Positioning</span>
-        <h2>{property.city || "South Florida"} positioning, reviewed in context.</h2>
+        <h2>Location</h2>
       </div>
       <div className="property-map-canvas">
         <iframe
@@ -3230,7 +3244,7 @@ function NeighborhoodIntelligence({ property }) {
     <section className="neighborhood-intel">
       <div className="property-section-heading">
         <span>Neighborhood Intelligence</span>
-        <h2>North Bay Road, read with market context.</h2>
+        <h2>Features</h2>
       </div>
       <div className="intel-grid">
         {property.intelligence.map(([label, value, note], index) => (
@@ -3267,6 +3281,11 @@ function ConciergeInquiry({ property }) {
       <div className="concierge-actions">
         <input aria-label="Name" placeholder="Name" />
         <input aria-label="Phone or email" placeholder="Phone or email" />
+        {property.city && (
+          <MagneticAnchor href={`/listings/${slugifySeo(property.city)}`} strength={0.14}>
+            View More Properties in {property.city}
+          </MagneticAnchor>
+        )}
         <MagneticAnchor
           href={messageUrl(`Hi Yairo, I would like to request a private showing for ${property.address}.`)}
           strength={0.18}

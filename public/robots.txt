@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+
+Disallow: /listings?*
+Disallow: /search?*
+Disallow: /*?status=
+Disallow: /*?price=
+Disallow: /*?bedrooms=
+Disallow: /*?bathrooms=
+Disallow: /*?sort=
+Disallow: /*?page=
+
+Sitemap: https://www.yairoproperties.com/sitemap.xml

@@ -32,6 +32,7 @@ export function normalizeListing(record, context = {}) {
     mlsId: record.ListingId || listingKey || record.mlsId || null,
     source: context.source || "unknown",
     status,
+    modifiedAt: record.ModificationTimestamp || record.ModificationDate || record.OriginalEntryTimestamp || null,
     title: record.PropertyName || record.title || streetAddress || address || "Private Residence",
     address,
     streetAddress,

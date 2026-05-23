@@ -3271,6 +3271,7 @@ h1 em {
   letter-spacing: 0.24em;
 }
 
+.listings-hero-copy h1,
 .listings-hero-copy h2 {
   max-width: 620px;
   margin: 0;
@@ -3584,6 +3585,30 @@ h1 em {
   flex-wrap: wrap;
   gap: 12px;
   margin-top: 22px;
+}
+
+.listing-area-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  margin-top: 30px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(8, 9, 8, 0.1);
+}
+
+.listing-area-links a {
+  color: rgba(8, 9, 8, 0.58);
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-decoration: none;
+  text-transform: uppercase;
+  transition: color 220ms ease, transform 220ms ease;
+}
+
+.listing-area-links a:hover {
+  color: #0a3a33;
+  transform: translateY(-1px);
 }
 
 .listings-page .luxury-checkbox {
@@ -5746,6 +5771,7 @@ html.is-cursor-pressed .luxury-cursor-ring {
     padding: 24px 22px;
   }
 
+  .listings-hero-copy h1,
   .listings-hero-copy h2 {
     font-size: clamp(46px, 12vw, 68px);
   }
