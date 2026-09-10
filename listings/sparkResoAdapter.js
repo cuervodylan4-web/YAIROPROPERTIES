@@ -1,7 +1,6 @@
 import { normalizeListing } from "./normalizers.js";
 
 const DEFAULT_BASE_URL = "https://replication.sparkapi.com/Version/3/Reso/OData";
-const MEDIA_EXPAND = "Media($select=MediaURL,MediaCategory,Order;$orderby=Order)";
 
 export async function fetchSparkResoListings({
   limit = 48,
@@ -19,7 +18,7 @@ export async function fetchSparkResoListings({
   waterfront,
   newConstruction,
   mode = "buy",
-  expand = MEDIA_EXPAND,
+  expand = "Media",
 } = {}) {
   const token = process.env.SPARK_ACCESS_TOKEN;
   if (!token) return [];
@@ -86,22 +85,42 @@ export async function fetchSparkResoListings({
       "Longitude",
       "PublicRemarks",
       "ModificationTimestamp",
-      // Spark truncates $expand=Media unless Media is also projected in $select.
-      "Media",
     ].join(",")
   );
   if (expand) params.set("$expand", expand);
 
+  // Spark rejects the collection query when Media is projected in $select, and
+  // truncates $expand=Media when a $select is present at all. The unprojected
+  // form is the one proven to return complete media (12 photos vs 3 on the same
+  // listing), so try it first and degrade to the previous behaviour rather than
+  // dropping through to the curated fallback.
+  const attempts = [
+    () => {
+      const p = new URLSearchParams(params);
+      p.delete("$select");
+      p.set("$expand", "Media");
+      return `Property?${p.toString()}`;
+    },
+    () => {
+      const p = new URLSearchParams(params);
+      p.set("$expand", "Media");
+      return `Property?${p.toString()}`;
+    },
+  ];
+
   let payload;
-  try {
-    payload = await requestReso(`Property?${params.toString()}`);
-  } catch (error) {
-    // Some Spark deployments reject the nested Media projection. Retry with a plain expand
-    // rather than dropping through to the curated fallback.
-    if (!expand || expand === "Media") throw error;
-    params.set("$expand", "Media");
-    payload = await requestReso(`Property?${params.toString()}`);
+  let lastError;
+  for (const build of attempts) {
+    try {
+      payload = await requestReso(build());
+      if (Array.isArray(payload?.value)) break;
+    } catch (error) {
+      lastError = error;
+      payload = undefined;
+    }
   }
+  if (!payload) throw lastError || new Error("Spark RESO request failed");
+
   const records = Array.isArray(payload?.value) ? payload.value : [];
 
   const listings = records.map((record) =>
@@ -121,7 +140,7 @@ export async function fetchSparkResoListingBySlug(slug) {
   const listingKey = extractListingKey(slug);
   if (listingKey) {
     try {
-      const payload = await requestReso(`Property('${encodeURIComponent(listingKey)}')?$expand=${MEDIA_EXPAND}`);
+      const payload = await requestReso(`Property('${encodeURIComponent(listingKey)}')?$expand=Media`);
       if (payload?.ListingKey) {
         return normalizeListing(payload, {
           source: "spark-reso",
