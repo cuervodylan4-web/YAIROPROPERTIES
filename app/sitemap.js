@@ -16,7 +16,9 @@ export default async function sitemap() {
 
   const propertyUrls = activeListings
     .filter((listing) => {
-      const image = listing.heroImage || listing.image || listing.gallery?.[0] || listing.media?.[0];
+      // heroImage/gallery always fall back to generic stock art, so only real MLS
+      // media proves the listing renders a usable page.
+      const image = Array.isArray(listing.media) && listing.media.length > 0;
       const description = listing.description || listing.summary || listing.narrative;
       const status = String(listing.status || "").toLowerCase();
       return (

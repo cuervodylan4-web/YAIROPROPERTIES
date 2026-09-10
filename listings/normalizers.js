@@ -1,7 +1,10 @@
 export function normalizeListing(record, context = {}) {
   const status = formatStatus(record.StandardStatus || record.MlsStatus || record.status || "Active");
   const isSold = status === "Closed" || status === "Sold";
-  const price = Number((isSold && record.ClosePrice) || record.ListPrice || record.CurrentPrice || record.price || record.listPrice || 0);
+  const rawPrice = Number((isSold && record.ClosePrice) || record.ListPrice || record.CurrentPrice || record.price || record.listPrice || 0);
+  // Some MLS records carry a placeholder list price (e.g. 269 for a $269K condo).
+  // Publishing it would render "$0K" and emit a false schema.org offer, so drop it.
+  const price = isReliablePrice(rawPrice) ? rawPrice : 0;
   const rawMedia = record.Media || record.media || record.images || [];
   const media = normalizeMedia(rawMedia);
   const listingKey = String(record.ListingKey || record.ListingId || record.id || record.mlsId || "");
@@ -88,6 +91,13 @@ export function normalizeListing(record, context = {}) {
   };
 }
 
+export const MIN_RELIABLE_PRICE = 1000;
+
+export function isReliablePrice(value) {
+  const amount = Number(value);
+  return Number.isFinite(amount) && amount >= MIN_RELIABLE_PRICE;
+}
+
 export function slugify(value) {
   return String(value || "listing")
     .toLowerCase()
@@ -96,8 +106,11 @@ export function slugify(value) {
 }
 
 function formatDisplayPrice(value) {
-  if (value >= 1000000) return `$${Number((value / 1000000).toFixed(value >= 10000000 ? 0 : 1))}M`;
-  return `$${Math.round(value / 1000)}K`;
+  const amount = Number(value);
+  if (!isReliablePrice(amount)) return "Upon Request";
+  if (amount >= 1000000) return `$${Number((amount / 1000000).toFixed(amount >= 10000000 ? 0 : 1))}M`;
+  if (amount >= 1000) return `$${Math.round(amount / 1000)}K`;
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(amount);
 }
 
 function normalizeMedia(media) {
@@ -111,8 +124,10 @@ function normalizeMedia(media) {
       if (typeof item === "string") return item;
       return item.MediaURL || item.MediaURLFull || item.MediaURLPreview || item.url || item.Uri || "";
     })
-    .filter((url) => /\.(jpe?g|png|webp|avif)(\?|$)/i.test(url))
-    .filter(Boolean);
+    .filter(Boolean)
+    // Spark serves some photos from CDN paths without a file extension.
+    .filter((url) => /^https?:\/\//i.test(url))
+    .filter((url) => /\.(jpe?g|png|webp|avif)(\?|$)/i.test(url) || /sparkplatform\.com|flexmls|amazonaws\.com/i.test(url));
 }
 
 function formatListValue(value) {
