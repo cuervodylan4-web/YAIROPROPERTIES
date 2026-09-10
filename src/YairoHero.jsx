@@ -11,7 +11,7 @@ import {
 } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { SEO_CITY_PAGES, seoPropertyPath, slugifySeo, titleCaseFromSlug } from "../lib/seo.js";
-import { DEFAULT_LOCALE, localizedPath, t } from "../lib/i18n.js";
+import { DEFAULT_LOCALE, localizedPath, t, tr } from "../lib/i18n.js";
 
 const VIDEO_DURATION_MS = 6200;
 const PHONE_NUMBER = "19548420980";
@@ -1129,12 +1129,12 @@ export function YairoHero({ locale = DEFAULT_LOCALE }) {
         </div>
       </section>
 
-      <BuyRentSellSection onModeSelect={setSearchMode} />
-      <SearchExperience activeMode={searchMode} onModeChange={setSearchMode} />
-      <FeaturedPropertiesSection />
-      <MeetYairoSection />
+      <BuyRentSellSection onModeSelect={setSearchMode} locale={locale} />
+      <SearchExperience activeMode={searchMode} onModeChange={setSearchMode} locale={locale} />
+      <FeaturedPropertiesSection locale={locale} />
+      <MeetYairoSection locale={locale} />
       <AreasWeServeSection />
-      <ValuationSection />
+      <ValuationSection locale={locale} />
       <SiteFooter />
     </main>
   );
@@ -1452,7 +1452,7 @@ function SiteFooter() {
   );
 }
 
-function BuyRentSellSection({ onModeSelect }) {
+function BuyRentSellSection({ onModeSelect, locale = DEFAULT_LOCALE }) {
   const sectionRef = useRef(null);
   const [selectedExperience, setSelectedExperience] = useState(experiences[0]);
   const { scrollYProgress } = useScroll({
@@ -1486,7 +1486,7 @@ function BuyRentSellSection({ onModeSelect }) {
         transition={{ duration: 1.1, ease: [0.16, 1, 0.3, 1] }}
       >
         <span>Yairo Rincon Advisory</span>
-        <h2 id="experience-title">Buy, Lease, Position</h2>
+        <h2 id="experience-title">{t(locale, "h2Experience")}</h2>
         <p>Residential guidance across Miami and South Florida.</p>
       </motion.div>
 
@@ -1516,7 +1516,7 @@ function BuyRentSellSection({ onModeSelect }) {
         >
           <div>
             <span>{selectedExperience.eyebrow}</span>
-            <h3>{selectedExperience.detailTitle}</h3>
+            <h3>{tr(locale, selectedExperience.detailTitle)}</h3>
           </div>
           <p>{selectedExperience.detail}</p>
           <MagneticAnchor
@@ -1564,7 +1564,7 @@ function ExperiencePanel({ experience, index, isSelected, onSelect }) {
   );
 }
 
-function SearchExperience({ activeMode, onModeChange }) {
+function SearchExperience({ activeMode, onModeChange, locale = DEFAULT_LOCALE }) {
   const sectionRef = useRef(null);
   const modeRefs = useRef({});
   const [openField, setOpenField] = useState(null);
@@ -1649,7 +1649,7 @@ function SearchExperience({ activeMode, onModeChange }) {
       >
         <div className="search-heading">
           <span>Search</span>
-          <h2 id="search-title">South Florida Real Estate With Clarity</h2>
+          <h2 id="search-title">{t(locale, "h2Search")}</h2>
           <p>Filter by location, property type, price, and the details that shape the decision.</p>
         </div>
 
@@ -1673,6 +1673,7 @@ function SearchExperience({ activeMode, onModeChange }) {
         <div className="search-sections">
           {modeKeys.map((key) => (
             <SearchModeSection
+              locale={locale}
               key={key}
               modeKey={key}
               mode={searchModes[key]}
@@ -1698,6 +1699,7 @@ function SearchExperience({ activeMode, onModeChange }) {
 }
 
 function SearchModeSection({
+  locale = DEFAULT_LOCALE,
   modeKey,
   mode,
   refCallback,
@@ -1727,7 +1729,7 @@ function SearchModeSection({
     >
       <div className="mode-heading">
         <span>{mode.eyebrow}</span>
-        <h3>{mode.title}</h3>
+        <h3>{tr(locale, mode.title)}</h3>
         <p>{mode.description}</p>
       </div>
 
@@ -2164,7 +2166,7 @@ function LuxurySwitch({ label, checked, onChange }) {
   );
 }
 
-function FeaturedPropertiesSection() {
+function FeaturedPropertiesSection({ locale = DEFAULT_LOCALE }) {
   const sectionRef = useRef(null);
   const carouselRef = useRef(null);
   const [properties, setProperties] = useState(featuredProperties);
@@ -2207,7 +2209,7 @@ function FeaturedPropertiesSection() {
         transition={{ duration: 1.1, ease: [0.16, 1, 0.3, 1] }}
       >
         <span>Featured Residences</span>
-        <h2>Featured Miami Homes</h2>
+        <h2>{t(locale, "h2Featured")}</h2>
         <p>
           Homes selected for location, architecture, and market position.
         </p>
@@ -2249,7 +2251,7 @@ function FeaturedPropertiesSection() {
   );
 }
 
-function MeetYairoSection() {
+function MeetYairoSection({ locale = DEFAULT_LOCALE }) {
   const [isOpen, setIsOpen] = useState(false);
   const reduceMotion = useReducedMotion();
   const sectionRef = useRef(null);
@@ -2299,7 +2301,7 @@ function MeetYairoSection() {
         transition={{ duration: 0.9, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
       >
         <span>Meet Yairo Rincon</span>
-        <h2>Miami residential guidance, handled with care.</h2>
+        <h2>{t(locale, "h2Guidance")}</h2>
         <p>
           Yairo brings market knowledge, design sensitivity, and steady guidance
           to acquisitions, leasing, and residential positioning.
@@ -2494,7 +2496,7 @@ function AreasWeServeSection() {
   );
 }
 
-function ValuationSection() {
+function ValuationSection({ locale = DEFAULT_LOCALE }) {
   const [homePrice, setHomePrice] = useState(1800000);
   const [downPayment, setDownPayment] = useState(360000);
   const [interestRate, setInterestRate] = useState(6.25);
@@ -2521,7 +2523,7 @@ function ValuationSection() {
         transition={{ duration: 0.86, ease: [0.16, 1, 0.3, 1] }}
       >
         <span>Free Home Valuation</span>
-        <h2>What Is Your Home Worth?</h2>
+        <h2>{t(locale, "h2Worth")}</h2>
         <p>
           Your home deserves a careful review. Share a few details and Yairo will help you understand its value with clarity and care.
         </p>
@@ -2536,7 +2538,7 @@ function ValuationSection() {
           transition={{ duration: 0.78, ease: [0.16, 1, 0.3, 1] }}
         >
           <span>Home Value Review</span>
-          <h3>Request a free valuation.</h3>
+          <h3>{t(locale, "h3Valuation")}</h3>
           <p>
             We believe every homeowner deserves honest guidance before making a move.
             Yairo will review your property, recent sales, and the best path forward with you.
