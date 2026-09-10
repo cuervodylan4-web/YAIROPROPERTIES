@@ -171,7 +171,8 @@ button {
   background:
     linear-gradient(180deg, rgba(5, 5, 5, 0.68), rgba(5, 5, 5, 0.22) 54%, rgba(5, 5, 5, 0));
   color: var(--yr-white);
-  will-change: transform, opacity;
+  /* position: fixed already promotes this bar; a permanent will-change kept an
+     extra composited layer alive for an animation that only runs on mount. */
 }
 
 .brand-cluster {
@@ -543,7 +544,8 @@ button {
   border-color: rgba(8, 9, 8, 0.08);
   background: rgba(255, 255, 255, 0.94);
   box-shadow: 0 18px 60px rgba(8, 9, 8, 0.08);
-  backdrop-filter: blur(22px);
+  /* The background is already 94% opaque, so a 22px backdrop blur was invisible
+     while forcing the fixed bar to repaint on every scroll frame. */
 }
 
 .primary-nav.nav-dark {

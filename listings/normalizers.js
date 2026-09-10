@@ -55,13 +55,13 @@ export function normalizeListing(record, context = {}) {
     architecturalStyle: architecture,
     propertyType,
     media: media.slice(0, 12),
+    // When the MLS sends no photos the hero falls back to a brand backdrop,
+    // which reads as decoration. The gallery does NOT: filling it with stock
+    // art presents unrelated homes as this property, which misleads buyers and
+    // risks the MLS display rules. An empty gallery is hidden by the UI.
     heroImage: media[0] || "/videos/optimized/miami-hero-02-poster.jpg",
-    gallery: media.length ? media.slice(0, 8) : [
-      "/videos/optimized/miami-hero-02-poster.jpg",
-      "/videos/optimized/miami-hero-04-poster.jpg",
-      "/videos/optimized/miami-hero-03-poster.jpg",
-      "/videos/optimized/miami-hero-01-poster.jpg",
-    ],
+    hasRealMedia: media.length > 0,
+    gallery: media.slice(0, 8),
     map: lat && lng ? { lat, lng, ...toMapPin(lat, lng) } : { lat: null, lng: null, x: 50, y: 48 },
     pin: lat && lng ? toMapPin(lat, lng) : { x: 50, y: 48 },
     description: remarks,
