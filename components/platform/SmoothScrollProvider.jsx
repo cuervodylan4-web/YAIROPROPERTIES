@@ -19,11 +19,18 @@ export function SmoothScrollProvider({ children }) {
         if (cancelled) return;
 
         lenis = new Lenis({
-          duration: 1.18,
+          // 1.18s of easing on every wheel tick is what read as "lag": the page
+          // kept gliding long after the gesture stopped. 0.72 keeps the smooth
+          // feel while staying responsive.
+          duration: 0.72,
           easing: (t) => Math.min(1, 1.001 - 2 ** (-10 * t)),
           smoothWheel: true,
-          wheelMultiplier: 0.82,
-          touchMultiplier: 1.06,
+          wheelMultiplier: 1,
+          touchMultiplier: 1.4,
+          // Touch devices already scroll smoothly; running Lenis there costs
+          // frames and fights the native gesture.
+          syncTouch: false,
+          smoothTouch: false,
         });
         window.__yairoLenis = lenis;
 

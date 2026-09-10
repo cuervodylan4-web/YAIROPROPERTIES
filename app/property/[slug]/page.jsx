@@ -8,7 +8,7 @@ import {
   seoPropertyPath,
   seoPropertySlug,
 } from "../../../lib/seo.js";
-import { permanentRedirect } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -49,20 +49,20 @@ export async function generateMetadata({ params }) {
 export default async function PropertyRoute({ params }) {
   const { slug } = await params;
   const listing = await getListingBySlug(slug);
-  const canonicalSlug = listing ? seoPropertySlug(listing) : slug;
+  if (!listing) notFound();
 
-  if (listing && slug !== canonicalSlug) {
+  const canonicalSlug = seoPropertySlug(listing);
+
+  if (slug !== canonicalSlug) {
     permanentRedirect(seoPropertyPath(listing));
   }
 
   return (
     <>
-      {listing && (
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(propertyJsonLd(listing)) }}
-        />
-      )}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(propertyJsonLd(listing)) }}
+      />
       <PropertyDetailPage property={listing} />
     </>
   );

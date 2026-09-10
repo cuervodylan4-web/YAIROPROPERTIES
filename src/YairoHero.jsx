@@ -386,7 +386,10 @@ function formatCardPrice(listing) {
   if (Number(listing.price) >= 1000000) {
     return `$${Number((Number(listing.price) / 1000000).toFixed(Number(listing.price) >= 10000000 ? 0 : 1))}M`;
   }
-  return listing.price ? `$${Math.round(Number(listing.price) / 1000)}K` : "Upon Request";
+  const amount = Number(listing.price);
+  if (!Number.isFinite(amount) || amount < 1000) return "Upon Request";
+  if (amount >= 1000000) return `$${Number((amount / 1000000).toFixed(amount >= 10000000 ? 0 : 1))}M`;
+  return `$${Math.round(amount / 1000)}K`;
 }
 
 function normalizeCardListing(listing, index = 0) {
@@ -400,7 +403,7 @@ function normalizeCardListing(listing, index = 0) {
     id: listing.slug || listing.id || listing.listingKey || `spark-listing-${index}`,
     image: heroImage,
     heroImage,
-    gallery: gallery.length ? gallery : [heroImage],
+    gallery,
     status: listing.status || "Active",
     title: listing.streetAddress || listing.title || listing.address || "Private Residence",
     address: listing.address || listing.title || "Address available by request",
@@ -3453,6 +3456,11 @@ function PropertyDetailExperience({ property }) {
 }
 
 function PropertyImageGallery({ property, onOpen }) {
+  const photos = (property.gallery || []).filter((image) => !String(image).includes("/videos/optimized/"));
+  // No MLS media means no gallery. Showing stock art here would present other
+  // people's homes as this property.
+  if (!photos.length) return null;
+
   return (
     <section className="property-gallery-section">
       <div className="property-section-heading">
@@ -3460,7 +3468,7 @@ function PropertyImageGallery({ property, onOpen }) {
         <h2>Gallery</h2>
       </div>
       <div className="property-gallery">
-        {property.gallery.map((image, index) => (
+        {photos.map((image, index) => (
           <motion.button
             key={image}
             className={index === 0 ? "is-large" : ""}
