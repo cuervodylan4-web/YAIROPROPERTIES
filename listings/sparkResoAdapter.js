@@ -1,6 +1,7 @@
 import { normalizeListing } from "./normalizers.js";
 
 const DEFAULT_BASE_URL = "https://replication.sparkapi.com/Version/3/Reso/OData";
+const MEDIA_EXPAND = "Media($select=MediaURL,MediaCategory,Order;$orderby=Order)";
 
 export async function fetchSparkResoListings({
   limit = 48,
@@ -18,7 +19,7 @@ export async function fetchSparkResoListings({
   waterfront,
   newConstruction,
   mode = "buy",
-  expand = "Media",
+  expand = MEDIA_EXPAND,
 } = {}) {
   const token = process.env.SPARK_ACCESS_TOKEN;
   if (!token) return [];
@@ -85,11 +86,22 @@ export async function fetchSparkResoListings({
       "Longitude",
       "PublicRemarks",
       "ModificationTimestamp",
+      // Spark truncates $expand=Media unless Media is also projected in $select.
+      "Media",
     ].join(",")
   );
   if (expand) params.set("$expand", expand);
 
-  const payload = await requestReso(`Property?${params.toString()}`);
+  let payload;
+  try {
+    payload = await requestReso(`Property?${params.toString()}`);
+  } catch (error) {
+    // Some Spark deployments reject the nested Media projection. Retry with a plain expand
+    // rather than dropping through to the curated fallback.
+    if (!expand || expand === "Media") throw error;
+    params.set("$expand", "Media");
+    payload = await requestReso(`Property?${params.toString()}`);
+  }
   const records = Array.isArray(payload?.value) ? payload.value : [];
 
   const listings = records.map((record) =>
@@ -109,7 +121,7 @@ export async function fetchSparkResoListingBySlug(slug) {
   const listingKey = extractListingKey(slug);
   if (listingKey) {
     try {
-      const payload = await requestReso(`Property('${encodeURIComponent(listingKey)}')?$expand=Media`);
+      const payload = await requestReso(`Property('${encodeURIComponent(listingKey)}')?$expand=${MEDIA_EXPAND}`);
       if (payload?.ListingKey) {
         return normalizeListing(payload, {
           source: "spark-reso",
