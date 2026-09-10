@@ -11,6 +11,7 @@ import {
 } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { SEO_CITY_PAGES, seoPropertyPath, slugifySeo, titleCaseFromSlug } from "../lib/seo.js";
+import { DEFAULT_LOCALE, localizedPath, t } from "../lib/i18n.js";
 
 const VIDEO_DURATION_MS = 6200;
 const PHONE_NUMBER = "19548420980";
@@ -849,7 +850,7 @@ const journalArticles = [
   },
 ];
 
-export function YairoHero() {
+export function YairoHero({ locale = DEFAULT_LOCALE }) {
   const reduceMotion = useReducedMotion();
   const videoRefs = useRef([]);
   const activeVideoRef = useRef(0);
@@ -977,7 +978,7 @@ export function YairoHero() {
     <main className="site-shell">
       <CustomCursor />
       <FloatingWhatsApp />
-      <PrimaryNav tone="dark" />
+      <PrimaryNav tone="dark" locale={locale} />
       <LeadCapturePopup />
 
       <AnimatePresence>
@@ -1056,45 +1057,45 @@ export function YairoHero() {
           >
             <motion.span
               variants={{
-                hidden: { opacity: 0, y: 26 },
+                // Rendered visible: the H1 must be readable in the server HTML,
+                // so only the offset animates.
+                hidden: { opacity: 1, y: 26 },
                 visible: {
                   opacity: 1,
                   y: 0,
-                  
                   transition: { duration: 1.05, ease: [0.16, 1, 0.3, 1] },
                 },
               }}
             >
-              Your Home
+              {t(locale, "heroLine1")}
             </motion.span>
             <motion.em
               variants={{
-                hidden: { opacity: 0, y: 30 },
+                hidden: { opacity: 1, y: 30 },
                 visible: {
                   opacity: 1,
                   y: 0,
-                  
                   transition: { duration: 1.2, ease: [0.16, 1, 0.3, 1] },
                 },
               }}
             >
-              My Priority
+              {t(locale, "heroLine2")}
             </motion.em>
           </motion.h1>
           <motion.p
             className="hero-subline"
-            initial={{ opacity: 0, y: 18 }}
-            animate={isLoaded ? { opacity: 1, y: 0 } : { opacity: 0, y: 18 }}
+            initial={{ opacity: 1, y: 18 }}
+            animate={isLoaded ? { opacity: 1, y: 0 } : { opacity: 1, y: 18 }}
             transition={{ duration: 0.95, ease: [0.16, 1, 0.3, 1], delay: 0.92 }}
           >
-            Residential guidance across Miami and South Florida.
+            {t(locale, "heroSubline")}
           </motion.p>
           <MagneticAnchor
             className="cta"
             href={messageUrl("Hi Yairo, I visited your website and would like to connect.")}
             strength={0.28}
           >
-            <span>Let's Connect</span>
+            <span>{t(locale, "heroCta")}</span>
           </MagneticAnchor>
         </motion.div>
 
@@ -1136,25 +1137,25 @@ export function YairoHero() {
   );
 }
 
-export function ListingsPage({ initialCity = "", cityTitle = "", cityIntro = "" }) {
+export function ListingsPage({ initialCity = "", cityTitle = "", cityIntro = "", locale = DEFAULT_LOCALE }) {
   return (
     <main className="site-shell listings-site">
       <CustomCursor />
       <FloatingWhatsApp />
-      <PrimaryNav tone="light" />
+      <PrimaryNav tone="light" locale={locale} />
       <LeadCapturePopup />
-      <ListingsPageSection standalone initialCity={initialCity} cityTitle={cityTitle} cityIntro={cityIntro} />
+      <ListingsPageSection standalone initialCity={initialCity} cityTitle={cityTitle} cityIntro={cityIntro} locale={locale} />
       <SiteFooter />
     </main>
   );
 }
 
-export function PropertyDetailPage({ property = propertyDetail }) {
+export function PropertyDetailPage({ property = propertyDetail, locale = DEFAULT_LOCALE }) {
   return (
     <main className="site-shell property-site">
       <CustomCursor />
       <FloatingWhatsApp />
-      <PrimaryNav tone="dark" />
+      <PrimaryNav tone="dark" locale={locale} />
       <LeadCapturePopup />
       <PropertyDetailExperience property={normalizeDetailProperty(property)} />
       <SiteFooter />
@@ -1162,12 +1163,12 @@ export function PropertyDetailPage({ property = propertyDetail }) {
   );
 }
 
-export function JournalPage() {
+export function JournalPage({ locale = DEFAULT_LOCALE }) {
   return (
     <main className="site-shell journal-site">
       <CustomCursor />
       <FloatingWhatsApp />
-      <PrimaryNav tone="light" />
+      <PrimaryNav tone="light" locale={locale} />
       <LeadCapturePopup />
       <JournalExperience />
       <SiteFooter />
@@ -1175,19 +1176,19 @@ export function JournalPage() {
   );
 }
 
-export function JournalEditorPage() {
+export function JournalEditorPage({ locale = DEFAULT_LOCALE }) {
   return (
     <main className="site-shell journal-editor-site">
       <CustomCursor />
       <FloatingWhatsApp />
-      <PrimaryNav tone="light" />
+      <PrimaryNav tone="light" locale={locale} />
       <JournalEditorExperience />
       <SiteFooter />
     </main>
   );
 }
 
-function PrimaryNav({ tone = "light" }) {
+function PrimaryNav({ tone = "light", locale = DEFAULT_LOCALE }) {
   const isScrolled = useScrolledNav();
 
   return (
@@ -1213,18 +1214,40 @@ function PrimaryNav({ tone = "light" }) {
         </MagneticAnchor>
       </div>
       <div className="nav-links">
-        <MagneticAnchor href="/" strength={0.16}>Home</MagneticAnchor>
-        <MagneticAnchor href="/listings" strength={0.16}>Listings</MagneticAnchor>
-        <MagneticAnchor href="/journal" strength={0.16}>Journal</MagneticAnchor>
+        <MagneticAnchor href={localizedPath("/", locale)} strength={0.16}>{t(locale, "navHome")}</MagneticAnchor>
+        <MagneticAnchor href={localizedPath("/listings", locale)} strength={0.16}>{t(locale, "navListings")}</MagneticAnchor>
+        <MagneticAnchor href={localizedPath("/journal", locale)} strength={0.16}>{t(locale, "navJournal")}</MagneticAnchor>
       </div>
-      <MagneticAnchor
-        className="nav-action"
-        href={messageUrl("Hi Yairo, I would like private access to discuss South Florida real estate.")}
-        strength={0.18}
-      >
-        Private Access
-      </MagneticAnchor>
+      <div className="nav-tail">
+        <LanguageSwitch locale={locale} />
+        <MagneticAnchor
+          className="nav-action"
+          href={messageUrl("Hi Yairo, I would like private access to discuss South Florida real estate.")}
+          strength={0.18}
+        >
+          {t(locale, "navAction")}
+        </MagneticAnchor>
+      </div>
     </motion.nav>
+  );
+}
+
+function LanguageSwitch({ locale = DEFAULT_LOCALE }) {
+  const target = locale === "es" ? "en" : "es";
+  const [href, setHref] = useState(localizedPath("/", target));
+
+  useEffect(() => {
+    // Keep the visitor on the same page when switching language.
+    if (typeof window === "undefined") return;
+    const path = window.location.pathname;
+    const neutral = path === "/es" ? "/" : path.startsWith("/es/") ? path.slice(3) : path;
+    setHref(localizedPath(neutral, target));
+  }, [target]);
+
+  return (
+    <a className="nav-lang" href={href} lang={target} hrefLang={target} title={t(locale, "switchTo")}>
+      {t(locale, "switchLabel")}
+    </a>
   );
 }
 
@@ -1270,11 +1293,30 @@ function LeadCapturePopup() {
     if (typeof window === "undefined") return undefined;
     if (window.sessionStorage.getItem("yairoLeadPopupDismissed") === "true") return undefined;
 
-    const timer = window.setTimeout(() => {
+    const isCoarsePointer = window.matchMedia("(pointer: coarse)").matches;
+    let opened = false;
+    const open = () => {
+      if (opened) return;
+      opened = true;
       setIsVisible(true);
-    }, 10000);
+    };
 
-    return () => window.clearTimeout(timer);
+    // 10s was early enough that the overlay landed while visitors were still
+    // reading the listing. Google counts that as an intrusive interstitial on
+    // mobile, so touch devices now wait 30s.
+    const timer = window.setTimeout(open, 30000);
+
+    // Pointer devices get exit-intent instead: it converts better and never
+    // covers the page while someone is still reading it.
+    const handleExitIntent = (event) => {
+      if (event.clientY <= 0 && !event.relatedTarget) open();
+    };
+    if (!isCoarsePointer) document.addEventListener("mouseout", handleExitIntent);
+
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener("mouseout", handleExitIntent);
+    };
   }, []);
 
   const closePopup = () => {
@@ -1859,7 +1901,7 @@ function AddressSearchField({ value, onChange, modeKey = "buy", contextValues = 
     setSuggestions([]);
     setIsFocused(false);
     if (typeof window !== "undefined") {
-      window.location.assign(`/property/${listing.listingKey || listing.id}`);
+      window.location.assign(seoPropertyPath(listing));
     }
   };
   const showSuggestions = isFocused && trimmedQuery.length >= 3 && (loading || suggestions.length > 0);
@@ -2584,7 +2626,7 @@ function CalculatorRange({ label, value, min, max, step, format, onChange }) {
   );
 }
 
-function ListingsPageSection({ standalone = false, initialCity = "", cityTitle = "", cityIntro = "" }) {
+function ListingsPageSection({ standalone = false, initialCity = "", cityTitle = "", cityIntro = "", locale = DEFAULT_LOCALE }) {
   const reduceMotion = useReducedMotion();
   const sectionRef = useRef(null);
   const initialListingState = useMemo(() => {
@@ -2670,7 +2712,7 @@ function ListingsPageSection({ standalone = false, initialCity = "", cityTitle =
         </motion.div>
         <div className="listings-hero-copy">
           <span>Yairo Rincon / Miami Advisory</span>
-          <h1>{cityTitle || "Luxury Listings in South Florida"}</h1>
+          <h1>{cityTitle || t(locale, "listingsTitle")}</h1>
           <p>
             {cityIntro || "Curated access to waterfront estates, architectural homes, condos, and private opportunities across South Florida."}
           </p>

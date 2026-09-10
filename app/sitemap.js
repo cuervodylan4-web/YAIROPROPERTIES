@@ -1,5 +1,6 @@
-import { getListings } from "../lib/listings.js";
-import { SEO_CITY_PAGES, absoluteUrl, seoPropertyPath } from "../lib/seo.js";
+import { cityInventoryCount, getListings } from "../lib/listings.js";
+import { SEO_CITY_PAGES, absoluteUrl, seoPropertyPath, titleCaseFromSlug } from "../lib/seo.js";
+import { localizedPath } from "../lib/i18n.js";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 900;
@@ -35,6 +36,31 @@ export default async function sitemap() {
       priority: 0.8,
     }));
 
+  // Drop city pages confirmed to have no inventory; keep the rest when the
+  // feed cannot answer.
+  const cityUrls = (
+    await Promise.all(
+      SEO_CITY_PAGES.map(async (city) => {
+        const inventory = await cityInventoryCount(titleCaseFromSlug(city));
+        if (inventory === 0) return null;
+        return [
+          {
+            url: absoluteUrl(`/listings/${city}`),
+            lastModified: now,
+            changeFrequency: "daily",
+            priority: 0.76,
+          },
+          {
+            url: absoluteUrl(localizedPath(`/listings/${city}`, "es")),
+            lastModified: now,
+            changeFrequency: "daily",
+            priority: 0.7,
+          },
+        ];
+      })
+    )
+  ).filter(Boolean).flat();
+
   return [
     {
       url: absoluteUrl("/"),
@@ -49,17 +75,24 @@ export default async function sitemap() {
       priority: 0.95,
     },
     {
+      url: absoluteUrl("/es"),
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.9,
+    },
+    {
+      url: absoluteUrl("/es/listings"),
+      lastModified: now,
+      changeFrequency: "daily",
+      priority: 0.85,
+    },
+    {
       url: absoluteUrl("/journal"),
       lastModified: now,
       changeFrequency: "weekly",
       priority: 0.65,
     },
-    ...SEO_CITY_PAGES.map((city) => ({
-      url: absoluteUrl(`/listings/${city}`),
-      lastModified: now,
-      changeFrequency: "daily",
-      priority: 0.76,
-    })),
+    ...cityUrls,
     ...propertyUrls,
   ];
 }
