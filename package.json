@@ -10,9 +10,9 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "next": "latest",
-    "react": "latest",
-    "react-dom": "latest",
+    "next": "16.2.6",
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
     "framer-motion": "latest",
     "gsap": "latest",
     "lenis": "latest",
